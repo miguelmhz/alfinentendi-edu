@@ -1,0 +1,288 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  ADMIN
+  COORDINATOR
+  TEACHER
+  STUDENT
+  PUBLIC // Para usuarios sin registro que acceden a contenido gratuito
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum AccessStatus {
+  INVITED
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum AnnotationVisibility {
+  PRIVATE
+  TEACHER
+  COORDINATOR
+}
+
+enum NotificationType {
+  ACCESS_GRANTED
+  ACCESS_EXPIRING
+  ACCESS_EXPIRED
+  STUDENT_ADDED
+  NEW_RESOURCE
+  SYSTEM
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+model School {
+  id            String   @id @default(cuid())
+  name          String
+  address       String?
+  contact       String?
+  coordinatorId String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  coordinator User?  @relation("SchoolCoordinator", fields: [coordinatorId], references: [id], onDelete: SetNull)
+  users       User[] @relation("SchoolUsers")
+  grades      Grade[]
+
+  @@index([coordinatorId])
+  @@map("schools")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  password     String?      // Solo para admin, coordinator, teacher
+  roles        UserRole[]   // Array: permite múltiples roles (ej. COORDINATOR + TEACHER)
+  status       UserStatus   @default(INVITED)
+  schoolId     String?
+  createdBy    String?      // ID del usuario que lo creó
+  lastLogin    DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  school              School?        @relation("SchoolUsers", fields: [schoolId], references: [id], onDelete: SetNull)
+  coordinatedSchool   School?        @relation("SchoolCoordinator")
+  groups              Group[]        @relation("TeacherGroups")
+  bookAccesses        BookAccess[]   @relation("UserBookAccess")
+  assignedAccesses    BookAccess[]   @relation("AssignedByUser")
+  annotations         Annotation[]
+  notifications       Notification[]
+  sessions            Session[]
+
+  @@index([email])
+  @@index([schoolId])
+  @@index([status])
+  @@map("users")
+}
+
+model Grade {
+  id        String   @id @default(cuid())
+  name      String   // ej. "Tercer Grado de Primaria"
+  level     String?  // ej. "Primaria", "Secundaria"
+  schoolId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  school School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  groups Group[]
+  books  Book[]
+
+  @@index([schoolId])
+  @@map("grades")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String   // ej. "3°A - Matemáticas"
+  gradeId   String
+  teacherId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  grade   Grade  @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  teacher User   @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([gradeId])
+  @@index([teacherId])
+  @@map("groups")
+}
+
+model Book {
+  id             String   @id @default(cuid())
+  sanityId       String   @unique // Referencia al documento en Sanity
+  title          String
+  gradeId        String?
+  subject        String?
+  pdfUrl         String   // URL del PDF desde Sanity CDN
+  isDownloadable Boolean  @default(false)
+  version        String   @default("1.0")
+  accessType     String   @default("restricted") // "public", "restricted", "teacher_only"
+  targetAudience String?  // "student", "teacher", "both"
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  grade        Grade?        @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  bookAccesses BookAccess[]
+  annotations  Annotation[]
+
+  @@index([sanityId])
+  @@index([gradeId])
+  @@index([isActive])
+  @@map("books")
+}
+
+model BookAccess {
+  id         String       @id @default(cuid())
+  userId     String
+  bookId     String
+  assignedBy String       // Profesor o coordinador que asignó
+  startDate  DateTime     // Inicio del período de acceso
+  endDate    DateTime     // Fin del período de acceso
+  isActive   Boolean      @default(true)
+  status     AccessStatus @default(ACTIVE)
+  groupId    String?      // Opcional: si fue asignado por grupo
+  gradeId    String?      // Opcional: si fue asignado por grado
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Relations
+  user     User @relation("UserBookAccess", fields: [userId], references: [id], onDelete: Cascade)
+  book     Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  assigner User @relation("AssignedByUser", fields: [assignedBy], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId, startDate]) // Evita duplicados exactos
+  @@index([userId])
+  @@index([bookId])
+  @@index([status])
+  @@index([endDate]) // Para queries de expiración
+  @@index([groupId])
+  @@index([gradeId])
+  @@map("book_accesses")
+}
+
+// NOTA: El acceso es INDIVIDUAL por usuario.
+// Cuando un coordinador/profesor asigna un libro a un grupo/grado,
+// el sistema crea automáticamente un registro BookAccess para cada alumno.
+// Esto permite control granular y períodos personalizados por alumno.
+
+model Annotation {
+  id         String                 @id @default(cuid())
+  userId     String
+  bookId     String
+  page       Int
+  type       String                 // "highlight", "note", "underline"
+  content    String?                @db.Text
+  color      String?                // Para highlights
+  position   Json?                  // Coordenadas en la página
+  visibility AnnotationVisibility   @default(PRIVATE)
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([page])
+  @@map("annotations")
+}
+
+// ============================================
+// AUTHENTICATION & SESSIONS
+// ============================================
+
+// NOTA: Forum Posts se manejan en Sanity CMS
+// NOTA: Magic Links/OTP se manejan con Supabase Auth directamente
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  token        String    @unique
+  refreshToken String?   @unique
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  lastActivity DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+// ============================================
+// NOTIFICATIONS & RESOURCES
+// ============================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  isRead    Boolean          @default(false)
+  metadata  Json?            // Datos adicionales (bookId, etc.)
+  createdAt DateTime         @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model AdditionalResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  fileUrl     String   // URL desde Sanity
+  fileType    String   // "pdf", "video", "document"
+  targetRole  String   @default("teacher") // "teacher", "coordinator", "admin"
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([targetRole])
+  @@index([isActive])
+  @@map("additional_resources")
+}
