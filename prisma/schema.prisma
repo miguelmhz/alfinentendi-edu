@@ -79,7 +79,6 @@ model User {
   id           String       @id @default(cuid())
   email        String       @unique
   name         String?
-  password     String?      // Solo para admin, coordinator, teacher
   roles        UserRole[]   // Array: permite múltiples roles (ej. COORDINATOR + TEACHER)
   status       UserStatus   @default(INVITED)
   schoolId     String?

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
-import "./globals.css";
+import "../globals.css";
 import { DashboardHeader } from "@/components/shared/dashboard-header";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -35,7 +35,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <main className="min-h-screen flex flex-col items-center">
+            <div className="flex-1 w-full flex flex-col gap-20 items-center">
+              <DashboardHeader />
+              {children}
+            </div>
+          </main>
         </ThemeProvider>
       </body>
     </html>

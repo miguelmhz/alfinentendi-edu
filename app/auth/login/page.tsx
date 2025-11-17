@@ -1,4 +1,5 @@
-import { LoginForm } from "@/components/login-form";
+import { LoginPassword } from "@/components/login-password";
+import { LoginMagicLink } from "@/components/login-magicLink";
 import {
   Tabs,
   TabsContent,
@@ -24,18 +25,18 @@ export default function Page() {
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         </div>
       </div>
-      <div className="w-full flex-1 md:px-28 md:py-14">
-        <Tabs defaultValue="profesor">
+      <div className="mx-auto flex-1 md:px-28 md:py-14">
+        <Tabs defaultValue="profesor" className="w-[410px] mx-auto">
           <TabsList>
             <TabsTrigger value="profesor">Soy Profesor</TabsTrigger>
             <TabsTrigger value="alumno">Soy Alumno</TabsTrigger>
           </TabsList>
-          <TabsContents>
-            <TabsContent value="profesor">
-              <LoginForm />
+          <TabsContents className="w-[410px]">
+            <TabsContent value="profesor" className="h-[410px]">
+              <LoginPassword />
             </TabsContent>
-            <TabsContent value="alumno">
-              Change your password here.
+            <TabsContent value="alumno" className="h-[410px]">
+              <LoginMagicLink />
             </TabsContent>
           </TabsContents>
         </Tabs>

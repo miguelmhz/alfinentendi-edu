@@ -45,7 +45,7 @@ const ThemeSwitcher = () => {
             />
           ) : (
             <Laptop
-              key="system"
+              key="light"
               size={ICON_SIZE}
               className={"text-muted-foreground"}
             />
