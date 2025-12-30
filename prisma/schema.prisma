@@ -62,6 +62,7 @@ model School {
   name          String
   address       String?
   contact       String?
+  logoUrl       String?
   coordinatorId String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

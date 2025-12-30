@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -54,9 +55,9 @@ const SectionIndicator = () => {
           const displayName = getDisplayName(segment)
           
           return (
-            <>
-              <BreadcrumbSeparator key={`sep-${index}`} />
-              <BreadcrumbItem key={routeTo}>
+            <React.Fragment key={routeTo}>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
                 {isLast ? (
                   <BreadcrumbPage>{displayName}</BreadcrumbPage>
                 ) : (
@@ -65,7 +66,7 @@ const SectionIndicator = () => {
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>
-            </>
+            </React.Fragment>
           )
         })}
       </BreadcrumbList>

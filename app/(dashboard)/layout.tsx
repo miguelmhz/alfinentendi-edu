@@ -3,6 +3,9 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "../globals.css";
 import { DashboardHeader } from "@/components/shared/dashboard-header";
+import { SidebarProvider } from "@/components/ui/sidebar/sidebar";
+import { AppSidebar } from "@/components/shared/dashboard-sidebar";
+import { SidebarInset } from "@/components/ui/sidebar/sidebar";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -25,23 +28,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
+        <SidebarProvider 
+          className="flex flex-col"
+          style={{
+            "--sidebar-width": "331px",
+          } as React.CSSProperties}
         >
-          <main className="min-h-screen flex flex-col items-center">
-            <div className="flex-1 w-full flex flex-col gap-20 items-center">
-              <DashboardHeader />
-              {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <DashboardHeader />
+            <div className="flex flex-1">
+              <AppSidebar />
+              <SidebarInset>
+                <div className="flex-1 w-full flex flex-col gap-20 items-center">
+                  {children}
+                </div>
+              </SidebarInset>
             </div>
-          </main>
-        </ThemeProvider>
+          </ThemeProvider>
+        </SidebarProvider>
       </body>
     </html>
   );
