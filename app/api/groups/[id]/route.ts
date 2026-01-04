@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -30,56 +30,45 @@ export async function PUT(
     }
 
     const params = await context.params;
-    const userId = params.id;
+    const groupId = params.id;
 
     const body = await request.json();
-    const { name, roles, status, schoolId } = body;
+    const { name, teacherId } = body;
 
-    if (!roles || roles.length === 0) {
+    if (!name || name.trim() === "") {
       return NextResponse.json(
-        { error: "Debe seleccionar al menos un rol" },
+        { error: "El nombre es requerido" },
         { status: 400 }
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const group = await prisma.group.update({
+      where: { id: groupId },
       data: {
-        name: name?.trim() || null,
-        roles: roles,
-        status: status || "INVITED",
-        schoolId: schoolId || null,
+        name: name.trim(),
+        teacherId: teacherId && teacherId !== "none" ? teacherId : null,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        roles: true,
-        status: true,
-        schoolId: true,
-        school: {
+      include: {
+        teacher: {
           select: {
             id: true,
             name: true,
+            email: true,
+          },
+        },
+        grade: {
+          select: {
+            id: true,
+            name: true,
+            level: true,
           },
         },
       },
     });
 
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({ group });
   } catch (error) {
-    console.error("Error actualizando usuario:", error);
+    console.error("Error actualizando grupo:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
@@ -115,29 +104,15 @@ export async function DELETE(
     }
 
     const params = await context.params;
-    const userId = params.id;
+    const groupId = params.id;
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const adminClient = createAdminClient();
-    await adminClient.auth.admin.deleteUser(userId);
-
-    await prisma.user.delete({
-      where: { id: userId },
+    await prisma.group.delete({
+      where: { id: groupId },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error eliminando usuario:", error);
+    console.error("Error eliminando grupo:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

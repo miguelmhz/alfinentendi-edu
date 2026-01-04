@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -19,67 +19,68 @@ export async function PUT(
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { id: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
-      return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
-        { status: 403 }
-      );
-    }
-
-    const params = await context.params;
-    const userId = params.id;
-
-    const body = await request.json();
-    const { name, roles, status, schoolId } = body;
-
-    if (!roles || roles.length === 0) {
-      return NextResponse.json(
-        { error: "Debe seleccionar al menos un rol" },
-        { status: 400 }
-      );
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
+    if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const params = await context.params;
+    const reviewId = params.id;
+
+    const existingReview = await prisma.bookReview.findUnique({
+      where: { id: reviewId },
+      select: { userId: true },
+    });
+
+    if (!existingReview) {
+      return NextResponse.json(
+        { error: "Review no encontrada" },
+        { status: 404 }
+      );
+    }
+
+    if (existingReview.userId !== user.id) {
+      return NextResponse.json(
+        { error: "No tienes permisos para editar esta review" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { rating, comment } = body;
+
+    if (rating && (rating < 1 || rating > 5)) {
+      return NextResponse.json(
+        { error: "La calificación debe estar entre 1 y 5" },
+        { status: 400 }
+      );
+    }
+
+    const review = await prisma.bookReview.update({
+      where: { id: reviewId },
       data: {
-        name: name?.trim() || null,
-        roles: roles,
-        status: status || "INVITED",
-        schoolId: schoolId || null,
+        ...(rating !== undefined && { rating }),
+        ...(comment !== undefined && { comment: comment || null }),
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        roles: true,
-        status: true,
-        schoolId: true,
-        school: {
+      include: {
+        user: {
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
       },
     });
 
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({ review });
   } catch (error) {
-    console.error("Error actualizando usuario:", error);
+    console.error("Error actualizando review:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
@@ -104,40 +105,45 @@ export async function DELETE(
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { id: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
-      return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
-        { status: 403 }
-      );
-    }
-
-    const params = await context.params;
-    const userId = params.id;
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
+    if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    const adminClient = createAdminClient();
-    await adminClient.auth.admin.deleteUser(userId);
+    const params = await context.params;
+    const reviewId = params.id;
 
-    await prisma.user.delete({
-      where: { id: userId },
+    const existingReview = await prisma.bookReview.findUnique({
+      where: { id: reviewId },
+      select: { userId: true },
+    });
+
+    if (!existingReview) {
+      return NextResponse.json(
+        { error: "Review no encontrada" },
+        { status: 404 }
+      );
+    }
+
+    if (existingReview.userId !== user.id) {
+      return NextResponse.json(
+        { error: "No tienes permisos para eliminar esta review" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.bookReview.delete({
+      where: { id: reviewId },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error eliminando usuario:", error);
+    console.error("Error eliminando review:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

@@ -89,14 +89,19 @@ model User {
   updatedAt    DateTime     @updatedAt
 
   // Relations
-  school              School?        @relation("SchoolUsers", fields: [schoolId], references: [id], onDelete: SetNull)
-  coordinatedSchool   School?        @relation("SchoolCoordinator")
-  groups              Group[]        @relation("TeacherGroups")
-  bookAccesses        BookAccess[]   @relation("UserBookAccess")
-  assignedAccesses    BookAccess[]   @relation("AssignedByUser")
+  school              School?           @relation("SchoolUsers", fields: [schoolId], references: [id], onDelete: SetNull)
+  coordinatedSchool   School?           @relation("SchoolCoordinator")
+  groups              Group[]           @relation("TeacherGroups")
+  bookAccesses        BookAccess[]      @relation("UserBookAccess")
+  assignedAccesses    BookAccess[]      @relation("AssignedByUser")
   annotations         Annotation[]
   notifications       Notification[]
   sessions            Session[]
+  bookAssignments     BookAssignment[]  @relation("BookAssignments")
+  guideComments       GuideComment[]    @relation("UserGuideComments")
+  bookReviews         BookReview[]      @relation("UserBookReviews")
+  reportedComments    CommentReport[]   @relation("ReportedComments")
+  reviewedReports     CommentReport[]   @relation("ReviewedReports")
 
   @@index([email])
   @@index([schoolId])
@@ -125,13 +130,13 @@ model Group {
   id        String   @id @default(cuid())
   name      String   // ej. "3°A - Matemáticas"
   gradeId   String
-  teacherId String
+  teacherId String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   grade   Grade  @relation(fields: [gradeId], references: [id], onDelete: Cascade)
-  teacher User   @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher User?  @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: Cascade)
 
   @@index([gradeId])
   @@index([teacherId])
@@ -285,4 +290,97 @@ model AdditionalResource {
   @@index([targetRole])
   @@index([isActive])
   @@map("additional_resources")
+}
+
+// ============================================
+// BOOK ASSIGNMENTS, GUIDES & REVIEWS
+// ============================================
+
+model BookAssignment {
+  id             String    @id @default(cuid())
+  bookSanityId   String    // Referencia al libro en Sanity
+  assignedToType String    // "school", "grade", "group", "teacher", "student"
+  assignedToId   String    // ID de la entidad
+  assignedBy     String    // Usuario que hizo la asignación
+  startDate      DateTime  @default(now())
+  endDate        DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  assigner User @relation("BookAssignments", fields: [assignedBy], references: [id], onDelete: Cascade)
+
+  @@index([bookSanityId])
+  @@index([assignedToType])
+  @@index([assignedToId])
+  @@index([assignedBy])
+  @@index([isActive])
+  @@map("book_assignments")
+}
+
+model GuideComment {
+  id             String          @id @default(cuid())
+  guideSanityId  String          // Referencia a la guía en Sanity
+  userId         String
+  content        String          @db.Text
+  imageUrls      String[]        // URLs de imágenes adjuntas
+  parentId       String?         // Para respuestas anidadas
+  isEdited       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  // Relations
+  user     User            @relation("UserGuideComments", fields: [userId], references: [id], onDelete: Cascade)
+  parent   GuideComment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  GuideComment[]  @relation("CommentReplies")
+  reports  CommentReport[]
+
+  @@index([guideSanityId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt])
+  @@map("guide_comments")
+}
+
+model BookReview {
+  id                  String   @id @default(cuid())
+  bookSanityId        String   // Referencia al libro en Sanity
+  userId              String
+  rating              Int      // 1-5 estrellas
+  comment             String?  @db.Text
+  isVerifiedPurchase  Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  user User @relation("UserBookReviews", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bookSanityId, userId]) // Un usuario solo puede hacer una review por libro
+  @@index([bookSanityId])
+  @@index([userId])
+  @@index([rating])
+  @@map("book_reviews")
+}
+
+model CommentReport {
+  id          String    @id @default(cuid())
+  commentId   String
+  reportedBy  String
+  reason      String    // "spam", "inappropriate", "offensive", "other"
+  description String?   @db.Text
+  status      String    @default("pending") // "pending", "reviewed", "resolved", "dismissed"
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  comment  GuideComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporter User         @relation("ReportedComments", fields: [reportedBy], references: [id], onDelete: Cascade)
+  reviewer User?        @relation("ReviewedReports", fields: [reviewedBy], references: [id], onDelete: SetNull)
+
+  @@index([commentId])
+  @@index([reportedBy])
+  @@index([status])
+  @@map("comment_reports")
 }

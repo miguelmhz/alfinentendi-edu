@@ -56,10 +56,21 @@ export async function GET(
           },
         },
         grades: {
-          select: {
-            id: true,
-            name: true,
-            level: true,
+          include: {
+            groups: {
+              include: {
+                teacher: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+              orderBy: {
+                name: "asc",
+              },
+            },
           },
           orderBy: {
             name: "asc",

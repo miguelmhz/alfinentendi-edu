@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -131,7 +131,8 @@ export async function POST(request: Request) {
 
     const temporaryPassword = generateTemporaryPassword();
 
-    const { data: authData, error: createError } = await supabase.auth.admin.createUser({
+    const adminClient = createAdminClient();
+    const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
       email: email.trim(),
       password: temporaryPassword,
       email_confirm: true,

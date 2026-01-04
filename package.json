@@ -11,6 +11,7 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@portabletext/react": "^6.0.2",
     "@prisma/client": "^6.18.0",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-checkbox": "^1.3.1",
@@ -39,6 +40,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-email": "^5.1.0",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.0"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -55,7 +55,8 @@ export async function POST(
 
     const temporaryPassword = generateTemporaryPassword();
 
-    const { error: updateError } = await supabase.auth.admin.updateUserById(
+    const adminClient = createAdminClient();
+    const { error: updateError } = await adminClient.auth.admin.updateUserById(
       userId,
       { password: temporaryPassword }
     );

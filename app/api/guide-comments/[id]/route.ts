@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -19,67 +19,68 @@ export async function PUT(
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { id: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
-      return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
-        { status: 403 }
-      );
-    }
-
-    const params = await context.params;
-    const userId = params.id;
-
-    const body = await request.json();
-    const { name, roles, status, schoolId } = body;
-
-    if (!roles || roles.length === 0) {
-      return NextResponse.json(
-        { error: "Debe seleccionar al menos un rol" },
-        { status: 400 }
-      );
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
+    if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const params = await context.params;
+    const commentId = params.id;
+
+    const existingComment = await prisma.guideComment.findUnique({
+      where: { id: commentId },
+      select: { userId: true },
+    });
+
+    if (!existingComment) {
+      return NextResponse.json(
+        { error: "Comentario no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    if (existingComment.userId !== user.id) {
+      return NextResponse.json(
+        { error: "No tienes permisos para editar este comentario" },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { content } = body;
+
+    if (!content || content.trim() === "") {
+      return NextResponse.json(
+        { error: "El contenido es requerido" },
+        { status: 400 }
+      );
+    }
+
+    const comment = await prisma.guideComment.update({
+      where: { id: commentId },
       data: {
-        name: name?.trim() || null,
-        roles: roles,
-        status: status || "INVITED",
-        schoolId: schoolId || null,
+        content: content.trim(),
+        isEdited: true,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        roles: true,
-        status: true,
-        schoolId: true,
-        school: {
+      include: {
+        user: {
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
       },
     });
 
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({ comment });
   } catch (error) {
-    console.error("Error actualizando usuario:", error);
+    console.error("Error actualizando comentario:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
@@ -104,40 +105,45 @@ export async function DELETE(
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { id: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
-      return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
-        { status: 403 }
-      );
-    }
-
-    const params = await context.params;
-    const userId = params.id;
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
+    if (!user) {
       return NextResponse.json(
         { error: "Usuario no encontrado" },
         { status: 404 }
       );
     }
 
-    const adminClient = createAdminClient();
-    await adminClient.auth.admin.deleteUser(userId);
+    const params = await context.params;
+    const commentId = params.id;
 
-    await prisma.user.delete({
-      where: { id: userId },
+    const existingComment = await prisma.guideComment.findUnique({
+      where: { id: commentId },
+      select: { userId: true },
+    });
+
+    if (!existingComment) {
+      return NextResponse.json(
+        { error: "Comentario no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    if (existingComment.userId !== user.id) {
+      return NextResponse.json(
+        { error: "No tienes permisos para eliminar este comentario" },
+        { status: 403 }
+      );
+    }
+
+    await prisma.guideComment.delete({
+      where: { id: commentId },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error eliminando usuario:", error);
+    console.error("Error eliminando comentario:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

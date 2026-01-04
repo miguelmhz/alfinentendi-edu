@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 import { Plus, Pencil, Trash2, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -103,9 +104,10 @@ export default function UsuariosPage() {
       })
       if (!response.ok) throw new Error("Error al eliminar usuario")
       await fetchUsers()
+      toast.success("Usuario eliminado exitosamente")
     } catch (error) {
       console.error("Error:", error)
-      alert("Error al eliminar el usuario")
+      toast.error("Error al eliminar el usuario")
     }
   }
 
@@ -115,10 +117,10 @@ export default function UsuariosPage() {
         method: "POST",
       })
       if (!response.ok) throw new Error("Error al reenviar invitación")
-      alert("Invitación reenviada exitosamente")
+      toast.success("Invitación reenviada exitosamente")
     } catch (error) {
       console.error("Error:", error)
-      alert("Error al reenviar la invitación")
+      toast.error("Error al reenviar la invitación")
     }
   }
 

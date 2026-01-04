@@ -1,4 +1,4 @@
-import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
@@ -19,67 +19,42 @@ export async function PUT(
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { id: true, roles: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
+    if (!user?.roles.some(role => ["ADMIN", "COORDINATOR"].includes(role))) {
       return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
+        { error: "No tienes permisos para modificar asignaciones" },
         { status: 403 }
       );
     }
 
     const params = await context.params;
-    const userId = params.id;
+    const assignmentId = params.id;
 
     const body = await request.json();
-    const { name, roles, status, schoolId } = body;
+    const { endDate, isActive } = body;
 
-    if (!roles || roles.length === 0) {
-      return NextResponse.json(
-        { error: "Debe seleccionar al menos un rol" },
-        { status: 400 }
-      );
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const assignment = await prisma.bookAssignment.update({
+      where: { id: assignmentId },
       data: {
-        name: name?.trim() || null,
-        roles: roles,
-        status: status || "INVITED",
-        schoolId: schoolId || null,
+        ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
+        ...(isActive !== undefined && { isActive }),
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        roles: true,
-        status: true,
-        schoolId: true,
-        school: {
+      include: {
+        assigner: {
           select: {
             id: true,
             name: true,
+            email: true,
           },
         },
       },
     });
 
-    return NextResponse.json({ user: updatedUser });
+    return NextResponse.json({ assignment });
   } catch (error) {
-    console.error("Error actualizando usuario:", error);
+    console.error("Error actualizando asignación:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
@@ -107,37 +82,23 @@ export async function DELETE(
       select: { roles: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
+    if (!user?.roles.some(role => ["ADMIN", "COORDINATOR"].includes(role))) {
       return NextResponse.json(
-        { error: "No tienes permisos para realizar esta acción" },
+        { error: "No tienes permisos para eliminar asignaciones" },
         { status: 403 }
       );
     }
 
     const params = await context.params;
-    const userId = params.id;
+    const assignmentId = params.id;
 
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      return NextResponse.json(
-        { error: "Usuario no encontrado" },
-        { status: 404 }
-      );
-    }
-
-    const adminClient = createAdminClient();
-    await adminClient.auth.admin.deleteUser(userId);
-
-    await prisma.user.delete({
-      where: { id: userId },
+    await prisma.bookAssignment.delete({
+      where: { id: assignmentId },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error eliminando usuario:", error);
+    console.error("Error eliminando asignación:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

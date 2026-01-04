@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -81,11 +82,15 @@ export default function EscuelasPage() {
       const response = await fetch(`/api/schools/${schoolId}`, {
         method: "DELETE",
       })
-      if (!response.ok) throw new Error("Error al eliminar escuela")
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Error al eliminar escuela")
+      }
       await fetchSchools()
-    } catch (error) {
+      toast.success("Escuela eliminada exitosamente")
+    } catch (error: any) {
       console.error("Error:", error)
-      alert("Error al eliminar la escuela")
+      toast.error(error.message || "Error al eliminar la escuela")
     }
   }
 

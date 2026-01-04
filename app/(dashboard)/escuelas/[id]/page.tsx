@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Mail,
@@ -12,6 +13,10 @@ import {
   BookOpen,
   CreditCard,
   GraduationCap,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +29,10 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { SchoolDialog } from "@/components/schools/school-dialog";
 
@@ -51,6 +60,15 @@ interface School {
     id: string;
     name: string;
     level: string | null;
+    groups: Array<{
+      id: string;
+      name: string;
+      teacher: {
+        id: string;
+        name: string | null;
+        email: string;
+      };
+    }>;  
   }>;
   createdAt: string;
   updatedAt: string;
@@ -66,6 +84,15 @@ export default function SchoolProfilePage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabType>("users");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [gradeDialogOpen, setGradeDialogOpen] = useState(false);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [expandedGrades, setExpandedGrades] = useState<Set<string>>(new Set());
+  const [teachers, setTeachers] = useState<Array<{ id: string; name: string | null; email: string }>>([]);
+  const [gradeName, setGradeName] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [groupName, setGroupName] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState("");
 
   useEffect(() => {
     if (!authLoading && isAdmin && params.id) {
@@ -80,6 +107,12 @@ export default function SchoolProfilePage() {
       if (!response.ok) throw new Error("Error al cargar escuela");
       const data = await response.json();
       setSchool(data.school);
+      
+      const teachersResponse = await fetch(`/api/users?role=TEACHER`);
+      if (teachersResponse.ok) {
+        const teachersData = await teachersResponse.json();
+        setTeachers(teachersData.users);
+      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -90,6 +123,80 @@ export default function SchoolProfilePage() {
   const handleSuccess = () => {
     setDialogOpen(false);
     fetchSchool();
+  };
+
+  const toggleGradeExpansion = (gradeId: string) => {
+    setExpandedGrades(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(gradeId)) {
+        newSet.delete(gradeId);
+      } else {
+        newSet.add(gradeId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleCreateGrade = async (name: string, level: string) => {
+    try {
+      const response = await fetch('/api/grades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, level, schoolId: params.id }),
+      });
+      if (!response.ok) throw new Error('Error al crear grado');
+      await fetchSchool();
+      setGradeDialogOpen(false);
+      toast.success('Grado creado exitosamente');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al crear el grado');
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId: string) => {
+    if (!confirm('¿Estás seguro de eliminar este grado? Se eliminarán todos los grupos asociados.')) return;
+    try {
+      const response = await fetch(`/api/grades/${gradeId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Error al eliminar grado');
+      await fetchSchool();
+      toast.success('Grado eliminado exitosamente');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al eliminar el grado');
+    }
+  };
+
+  const handleCreateGroup = async (name: string, teacherId: string | null) => {
+    if (!selectedGrade) return;
+    try {
+      const response = await fetch('/api/groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, gradeId: selectedGrade, teacherId: teacherId || null }),
+      });
+      if (!response.ok) throw new Error('Error al crear grupo');
+      await fetchSchool();
+      setGroupDialogOpen(false);
+      setSelectedGrade(null);
+      toast.success('Grupo creado exitosamente');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al crear el grupo');
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!confirm('¿Estás seguro de eliminar este grupo?')) return;
+    try {
+      const response = await fetch(`/api/groups/${groupId}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Error al eliminar grupo');
+      await fetchSchool();
+      toast.success('Grupo eliminado exitosamente');
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al eliminar el grupo');
+    }
   };
 
   const getInitials = (name: string | null, email: string) => {
@@ -300,31 +407,136 @@ export default function SchoolProfilePage() {
 
         {activeTab === "grades" && (
           <Card>
-            <CardHeader>
-              <CardTitle>Grados Escolares</CardTitle>
-              <CardDescription>
-                Gestiona los grados y grupos de la escuela
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Grados Escolares</CardTitle>
+                <CardDescription>
+                  Gestiona los grados y grupos de la escuela
+                </CardDescription>
+              </div>
+              <Button onClick={() => setGradeDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Agregar Grado
+              </Button>
             </CardHeader>
             <CardContent>
               {school.grades.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <GraduationCap className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="mb-4">No hay grados registrados</p>
-                  <Button variant="outline">Agregar grado</Button>
+                  <Button variant="outline" onClick={() => setGradeDialogOpen(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Agregar primer grado
+                  </Button>
                 </div>
               ) : (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {school.grades.map((grade) => (
-                    <Card key={grade.id}>
-                      <CardHeader>
-                        <CardTitle className="text-lg">{grade.name}</CardTitle>
-                        {grade.level && (
-                          <CardDescription>{grade.level}</CardDescription>
+                <div className="space-y-2">
+                  {school.grades.map((grade) => {
+                    const isExpanded = expandedGrades.has(grade.id);
+                    return (
+                      <div key={grade.id} className="border rounded-lg overflow-hidden">
+                        <div className="flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3 flex-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => toggleGradeExpansion(grade.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <div className="flex-1">
+                              <div className="font-semibold">{grade.name}</div>
+                              {grade.level && (
+                                <div className="text-sm text-muted-foreground">
+                                  {grade.level}
+                                </div>
+                              )}
+                            </div>
+                            <Badge variant="secondary">
+                              {grade.groups.length} grupo{grade.groups.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedGrade(grade.id);
+                                setGroupDialogOpen(true);
+                              }}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Agregar Grupo
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteGrade(grade.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div className="border-t">
+                            {grade.groups.length === 0 ? (
+                              <div className="p-8 text-center text-muted-foreground">
+                                <p className="mb-2">No hay grupos en este grado</p>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedGrade(grade.id);
+                                    setGroupDialogOpen(true);
+                                  }}
+                                >
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Agregar primer grupo
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="overflow-x-auto">
+                                <table className="w-full">
+                                  <thead className="bg-muted/20">
+                                    <tr>
+                                      <th className="text-left p-3 font-medium text-sm">Nombre del Grupo</th>
+                                      <th className="text-left p-3 font-medium text-sm">Profesor</th>
+                                      <th className="text-left p-3 font-medium text-sm">Email</th>
+                                      <th className="text-right p-3 font-medium text-sm">Acciones</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {grade.groups.map((group) => (
+                                      <tr key={group.id} className="border-t hover:bg-muted/10">
+                                        <td className="p-3">{group.name}</td>
+                                        <td className="p-3">{group.teacher ? (group.teacher.name || 'Sin nombre') : <span className="text-muted-foreground italic">Sin asignar</span>}</td>
+                                        <td className="p-3 text-sm text-muted-foreground">{group.teacher?.email || '-'}</td>
+                                        <td className="p-3 text-right">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => handleDeleteGroup(group.id)}
+                                          >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            )}
+                          </div>
                         )}
-                      </CardHeader>
-                    </Card>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -375,6 +587,124 @@ export default function SchoolProfilePage() {
         school={school}
         onSuccess={handleSuccess}
       />
+
+      <Dialog open={gradeDialogOpen} onOpenChange={setGradeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Grado</DialogTitle>
+            <DialogDescription>
+              Agrega un nuevo grado escolar a la escuela
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="grade-name">Nombre del Grado *</Label>
+              <Input
+                id="grade-name"
+                placeholder="ej. Tercer Grado de Primaria"
+                value={gradeName}
+                onChange={(e) => setGradeName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="grade-level">Nivel (Opcional)</Label>
+              <Input
+                id="grade-level"
+                placeholder="ej. Primaria, Secundaria"
+                value={gradeLevel}
+                onChange={(e) => setGradeLevel(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setGradeDialogOpen(false);
+                setGradeName("");
+                setGradeLevel("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (gradeName.trim()) {
+                  handleCreateGrade(gradeName, gradeLevel);
+                  setGradeName("");
+                  setGradeLevel("");
+                }
+              }}
+              disabled={!gradeName.trim()}
+            >
+              Crear Grado
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={groupDialogOpen} onOpenChange={setGroupDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Crear Nuevo Grupo</DialogTitle>
+            <DialogDescription>
+              Agrega un nuevo grupo al grado seleccionado
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="group-name">Nombre del Grupo *</Label>
+              <Input
+                id="group-name"
+                placeholder="ej. 3°A - Matemáticas"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="teacher">Profesor Asignado (Opcional)</Label>
+              <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un profesor (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {teachers.map((teacher) => (
+                    <SelectItem key={teacher.id} value={teacher.id}>
+                      {teacher.name || teacher.email}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setGroupDialogOpen(false);
+                setGroupName("");
+                setSelectedTeacher("");
+                setSelectedGrade(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (groupName.trim()) {
+                  handleCreateGroup(groupName, selectedTeacher === "none" ? null : selectedTeacher);
+                  setGroupName("");
+                  setSelectedTeacher("");
+                }
+              }}
+              disabled={!groupName.trim()}
+            >
+              Crear Grupo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

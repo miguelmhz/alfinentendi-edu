@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -149,10 +150,11 @@ export function UserDialog({
         throw new Error(error.error || "Error al guardar usuario")
       }
 
+      toast.success(user ? "Usuario actualizado exitosamente" : "Usuario creado exitosamente")
       onSuccess()
     } catch (error: any) {
       console.error("Error:", error)
-      alert(error.message || "Error al guardar el usuario")
+      toast.error(error.message || "Error al guardar el usuario")
     } finally {
       setLoading(false)
     }

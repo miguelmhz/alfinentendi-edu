@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Upload, X } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -186,10 +187,11 @@ export function SchoolDialog({
         throw new Error(error.error || "Error al guardar escuela")
       }
 
+      toast.success(school ? "Escuela actualizada exitosamente" : "Escuela creada exitosamente")
       onSuccess()
     } catch (error) {
       console.error("Error:", error)
-      alert(error instanceof Error ? error.message : "Error al guardar escuela")
+      toast.error(error instanceof Error ? error.message : "Error al guardar escuela")
     } finally {
       setLoading(false)
     }
