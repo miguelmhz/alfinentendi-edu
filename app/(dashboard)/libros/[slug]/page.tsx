@@ -3,13 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import { BookCoverFallback } from "@/components/books/book-cover-fallback";
 import { BookReviews } from "@/components/books/book-reviews";
 import { BookGuides } from "@/components/books/book-guides";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Calendar, FileText, ShoppingCart, Download, Eye } from "lucide-react";
+import { Calendar, FileText, ShoppingCart, Download, Eye, BookOpen } from "lucide-react";
 import { PortableText } from "@portabletext/react";
 
 interface PageProps {
@@ -237,24 +238,33 @@ export default async function BookPage({ params }: PageProps) {
             <div className="flex flex-wrap gap-3 pt-6 border-t">
               {book.preview?.asset?.url && (
                 <Button variant="outline" asChild>
-                  <a href={book.preview.asset.url} target="_blank" rel="noopener noreferrer">
+                  <Link href={`/libros/${slug}/vista?type=preview`}>
                     <Eye className="w-4 h-4 mr-2" />
-                    Vista previa
-                  </a>
+                    Ver Vista Previa
+                  </Link>
+                </Button>
+              )}
+
+              {book.file?.asset?.url && (
+                <Button asChild>
+                  <Link href={`/libros/${slug}/vista`}>
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Leer Libro
+                  </Link>
                 </Button>
               )}
 
               {book.file?.asset?.url && (
                 <Button variant="outline" asChild>
-                  <a href={book.file.asset.url} target="_blank" rel="noopener noreferrer">
+                  <a href={book.file.asset.url} target="_blank" rel="noopener noreferrer" download>
                     <Download className="w-4 h-4 mr-2" />
-                    Descargar
+                    Descargar PDF
                   </a>
                 </Button>
               )}
 
               {book.purchaseLink && book.price && (
-                <Button asChild>
+                <Button variant="secondary" asChild>
                   <a href={book.purchaseLink} target="_blank" rel="noopener noreferrer">
                     <ShoppingCart className="w-4 h-4 mr-2" />
                     Comprar ${book.price.toFixed(2)}
