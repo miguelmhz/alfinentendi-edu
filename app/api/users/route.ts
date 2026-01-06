@@ -38,10 +38,16 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const role = searchParams.get("role");
+    const includeDeleted = searchParams.get("includeDeleted") === "true";
 
-    const whereClause = role
+    const whereClause: any = role
       ? { roles: { has: role as any } }
       : {};
+
+    // Si no se incluyen eliminados, filtrar por deletedAt null
+    if (!includeDeleted) {
+      whereClause.deletedAt = null;
+    }
 
     const users = await prisma.user.findMany({
       where: whereClause,
@@ -58,7 +64,31 @@ export async function GET(request: Request) {
             name: true,
           },
         },
+        teacherGroups: {
+          select: {
+            id: true,
+            name: true,
+            grade: {
+              select: {
+                name: true,
+                level: true,
+              },
+            },
+          },
+        },
+        studentGroups: {
+          select: {
+            group: {
+              select: {
+                id: true,
+                name: true,
+                gradeId: true,
+              },
+            },
+          },
+        },
         lastLogin: true,
+        deletedAt: true,
         createdAt: true,
         updatedAt: true,
       },

@@ -116,6 +116,9 @@ export async function DELETE(
 
     const params = await context.params;
     const userId = params.id;
+    
+    const body = await request.json().catch(() => ({}));
+    const { restore } = body;
 
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -128,16 +131,24 @@ export async function DELETE(
       );
     }
 
-    const adminClient = createAdminClient();
-    await adminClient.auth.admin.deleteUser(userId);
-
-    await prisma.user.delete({
-      where: { id: userId },
-    });
-
-    return NextResponse.json({ success: true });
+    // Soft delete o restaurar
+    if (restore) {
+      // Restaurar usuario
+      await prisma.user.update({
+        where: { id: userId },
+        data: { deletedAt: null },
+      });
+      return NextResponse.json({ success: true, message: "Usuario restaurado" });
+    } else {
+      // Soft delete
+      await prisma.user.update({
+        where: { id: userId },
+        data: { deletedAt: new Date() },
+      });
+      return NextResponse.json({ success: true, message: "Usuario eliminado" });
+    }
   } catch (error) {
-    console.error("Error eliminando usuario:", error);
+    console.error("Error eliminando/restaurando usuario:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }

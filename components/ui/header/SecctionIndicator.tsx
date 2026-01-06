@@ -45,7 +45,7 @@ const SectionIndicator = () => {
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link href="/" className="text-primary text-2xl font-bold">EDU</Link>
+            <Link href="/" className="text-primary text-base lg:text-2xl font-bold">EDU</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         
@@ -59,10 +59,10 @@ const SectionIndicator = () => {
               <BreadcrumbSeparator />
               <BreadcrumbItem>
                 {isLast ? (
-                  <BreadcrumbPage>{displayName}</BreadcrumbPage>
+                  <BreadcrumbPage className="text-xs lg:text-xl">{displayName}</BreadcrumbPage>
                 ) : (
                   <BreadcrumbLink asChild>
-                    <Link href={routeTo}>{displayName}</Link>
+                    <Link className="text-xs lg:text-xl" href={routeTo}>{displayName}</Link>
                   </BreadcrumbLink>
                 )}
               </BreadcrumbItem>

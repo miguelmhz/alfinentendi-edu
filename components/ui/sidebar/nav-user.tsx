@@ -7,6 +7,7 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
+  User,
 } from "lucide-react"
 
 import {
@@ -17,10 +18,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -29,9 +27,14 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar/sidebar"
+import { Separator } from "../separator"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 type NavUserProps = {
   user: {
+    id?: string
     name?: string | null
     email?: string | null
     avatar?: string | null
@@ -40,9 +43,35 @@ type NavUserProps = {
 
 export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar()
+  const router = useRouter()
   const displayName = user.name ?? user.email ?? "Usuario"
   const displayEmail = user.email ?? "Sin correo"
   const initials = getInitials(user.name, user.email)
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        toast.error("Error al cerrar sesión")
+        return
+      }
+      
+      toast.success("Sesión cerrada exitosamente")
+      router.push("/auth/login")
+      router.refresh()
+    } catch (error) {
+      console.error("Error:", error)
+      toast.error("Error al cerrar sesión")
+    }
+  }
+
+  const handleProfile = () => {
+    if (user.id) {
+      router.push(`/usuarios/${user.id}`)
+    }
+  }
 
   return (
     <SidebarMenu>
@@ -70,9 +99,20 @@ export function NavUser({ user }: NavUserProps) {
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuItem>
+            <DropdownMenuItem 
+              className="cursor-pointer"
+              onClick={handleProfile}
+            >
+              <User />
+              Perfil
+            </DropdownMenuItem>
+            <Separator />
+            <DropdownMenuItem 
+              className="cursor-pointer"
+              onClick={handleLogout}
+            >
               <LogOut />
-              Log out
+              Cerrar sesión
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

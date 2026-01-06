@@ -5,7 +5,9 @@ import { BookCard } from "@/components/books/book-card";
 import { BookListItem } from "@/components/books/book-list-item";
 import { BookFilters, BookFilters as BookFiltersType } from "@/components/books/book-filters";
 import { Button } from "@/components/ui/button";
-import { LayoutGrid, List, Loader2 } from "lucide-react";
+import { LayoutGrid, List, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Book {
   _id: string;
@@ -28,12 +30,14 @@ interface Book {
 }
 
 export default function LibrosPage() {
+  const { isAdmin } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
   const [categories, setCategories] = useState<{ name: string; slug: { current: string } }[]>([]);
   const [authors, setAuthors] = useState<{ name: string; slug: { current: string } }[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [filters, setFilters] = useState<BookFiltersType>({
     search: "",
     category: "",
@@ -136,13 +140,53 @@ export default function LibrosPage() {
     setFilters(newFilters);
   };
 
+  const handleSyncBooks = async () => {
+    try {
+      setSyncing(true);
+      toast.info("Sincronizando libros desde Sanity...");
+      
+      const response = await fetch("/api/books/sync-all", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al sincronizar libros");
+      }
+
+      const data = await response.json();
+      toast.success(data.message || `${data.synced} libros sincronizados exitosamente`);
+      
+      // Recargar libros después de sincronizar
+      await fetchBooks();
+    } catch (error: any) {
+      console.error("Error:", error);
+      toast.error(error.message || "Error al sincronizar libros");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Catálogo de Libros</h1>
-        <p className="text-gray-600">
-          Explora nuestra colección de libros educativos
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Catálogo de Libros</h1>
+            <p className="text-gray-600">
+              Explora nuestra colección de libros educativos
+            </p>
+          </div>
+          {isAdmin && (
+            <Button
+              onClick={handleSyncBooks}
+              disabled={syncing}
+              variant="outline"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Sincronizando..." : "Sincronizar desde Sanity"}
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

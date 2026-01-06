@@ -254,15 +254,7 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-              {book.file?.asset?.url && (
-                <Button variant="outline" asChild>
-                  <a href={book.file.asset.url} target="_blank" rel="noopener noreferrer" download>
-                    <Download className="w-4 h-4 mr-2" />
-                    Descargar PDF
-                  </a>
-                </Button>
-              )}
-
+             
               {book.purchaseLink && book.price && (
                 <Button variant="secondary" asChild>
                   <a href={book.purchaseLink} target="_blank" rel="noopener noreferrer">

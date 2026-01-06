@@ -5,7 +5,7 @@ const Help = () => {
   return (
     <div>
         <button>
-            <Info />
+            <Info size={20}/>
         </button>
     </div>
   )

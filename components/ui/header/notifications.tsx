@@ -4,7 +4,7 @@ const Notifications = () => {
   return (
     <div>
         <button>
-            <Bell className=""/>
+            <Bell className="" size={20}/>
         </button>
     </div>
   )

@@ -30,10 +30,16 @@ export async function GET(
     }
 
     const params = await context.params;
-    const schoolId = params.id;
+    const slugOrId = params.id;
 
-    const school = await prisma.school.findUnique({
-      where: { id: schoolId },
+    // Try to find by slug first, then by id for backward compatibility
+    const school = await prisma.school.findFirst({
+      where: {
+        OR: [
+          { slug: slugOrId },
+          { id: slugOrId }
+        ]
+      },
       include: {
         coordinator: {
           select: {
@@ -50,6 +56,16 @@ export async function GET(
             email: true,
             roles: true,
             status: true,
+            studentGroups: {
+              select: {
+                group: {
+                  select: {
+                    id: true,
+                    gradeId: true,
+                  },
+                },
+              },
+            },
           },
           orderBy: {
             name: "asc",
@@ -134,10 +150,15 @@ export async function PUT(
     }
 
     const params = await context.params;
-    const schoolId = params.id;
+    const slugOrId = params.id;
 
-    const existingSchool = await prisma.school.findUnique({
-      where: { id: schoolId },
+    const existingSchool = await prisma.school.findFirst({
+      where: {
+        OR: [
+          { slug: slugOrId },
+          { id: slugOrId }
+        ]
+      },
     });
 
     if (!existingSchool) {
@@ -164,7 +185,7 @@ export async function PUT(
     }
 
     const school = await prisma.school.update({
-      where: { id: schoolId },
+      where: { id: existingSchool.id },
       data: {
         name: name.trim(),
         address: address?.trim() || null,
@@ -221,10 +242,15 @@ export async function DELETE(
     }
 
     const params = await context.params;
-    const schoolId = params.id;
+    const slugOrId = params.id;
 
-    const existingSchool = await prisma.school.findUnique({
-      where: { id: schoolId },
+    const existingSchool = await prisma.school.findFirst({
+      where: {
+        OR: [
+          { slug: slugOrId },
+          { id: slugOrId }
+        ]
+      },
       include: {
         users: true,
         grades: true,
@@ -246,7 +272,7 @@ export async function DELETE(
     }
 
     await prisma.school.delete({
-      where: { id: schoolId },
+      where: { id: existingSchool.id },
     });
 
     return NextResponse.json({ success: true });

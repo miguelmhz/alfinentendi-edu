@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { guideSanityId, content, imageUrls, parentId } = body;
+    const { guideSanityId, entrySanityId, content, imageUrls, parentId } = body;
 
     if (!guideSanityId || !content || content.trim() === "") {
       return NextResponse.json(
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
     const comment = await prisma.guideComment.create({
       data: {
         guideSanityId,
+        entrySanityId: entrySanityId || null,
         userId: user.id,
         content: content.trim(),
         imageUrls: imageUrls || [],
@@ -79,6 +80,7 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const guideSanityId = searchParams.get("guideSanityId");
+    const entrySanityId = searchParams.get("entrySanityId");
     const parentId = searchParams.get("parentId");
 
     if (!guideSanityId) {
@@ -89,6 +91,11 @@ export async function GET(request: Request) {
     }
 
     const where: any = { guideSanityId };
+    
+    // Filtrar por entrada específica si se proporciona
+    if (entrySanityId) {
+      where.entrySanityId = entrySanityId;
+    }
     
     if (parentId === "null") {
       where.parentId = null;

@@ -8,13 +8,6 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const bookId = searchParams.get("bookId");
 
-    if (!bookId) {
-      return NextResponse.json(
-        { error: "bookId es requerido" },
-        { status: 400 }
-      );
-    }
-
     // Verificar autenticación y rol
     const supabase = await createClient();
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
@@ -39,26 +32,54 @@ export async function GET(request: Request) {
       );
     }
 
-    const query = `*[_type == "guide" && references($bookId) && isPublished == true] | order(order asc, publishedAt desc) {
-      _id,
-      title,
-      slug,
-      description,
-      "books": books[]->{ _id, name, slug },
-      content,
-      pdfFile {
-        asset-> {
+    // Si hay bookId, filtrar por libro específico, sino traer todas las guías
+    const query = bookId
+      ? `*[_type == "guide" && references($bookId) && isPublished == true] | order(order asc, publishedAt desc) {
           _id,
-          url
-        }
-      },
-      order,
-      targetAudience,
-      tags,
-      publishedAt
-    }`;
+          title,
+          slug,
+          description,
+          coverImage {
+            asset-> {
+              url
+            }
+          },
+          "book": books[0]->{ _id, name, slug },
+          difficulty,
+          estimatedTime,
+          isPublic,
+          content,
+          pdfFile {
+            asset-> {
+              _id,
+              url
+            }
+          },
+          order,
+          targetAudience,
+          tags,
+          publishedAt
+        }`
+      : `*[_type == "guide" && isPublished == true] | order(publishedAt desc) {
+          _id,
+          title,
+          slug,
+          description,
+          coverImage {
+            asset-> {
+              url
+            }
+          },
+          "book": books[0]->{ _id, name, slug },
+          difficulty,
+          estimatedTime,
+          isPublic,
+          publishedAt
+        }`;
 
-    const guides = await client.fetch(query, { bookId });
+    const guides = bookId 
+      ? await client.fetch(query, { bookId })
+      : await client.fetch(query);
 
     return NextResponse.json({ guides });
   } catch (error) {

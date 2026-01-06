@@ -5,17 +5,17 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { slug } = await params;
+    const { id } = await params;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'full';
 
-    console.log('[PDF API] Request for slug:', slug, 'type:', type);
+    console.log('[PDF API] Request for id:', id, 'type:', type);
 
-    // Obtener libro desde Sanity
-    const query = `*[_type == "book" && slug.current == $slug][0] {
+    // Obtener libro desde Sanity (buscar por slug o _id)
+    const query = `*[_type == "book" && (slug.current == $id || _id == $id)][0] {
       _id,
       name,
       file {
@@ -32,10 +32,10 @@ export async function GET(
       }
     }`;
 
-    const book = await client.fetch(query, { slug });
+    const book = await client.fetch(query, { id });
 
     if (!book) {
-      console.error('[PDF API] Book not found:', slug);
+      console.error('[PDF API] Book not found:', id);
       return NextResponse.json(
         { error: "Book not found" },
         { status: 404 }

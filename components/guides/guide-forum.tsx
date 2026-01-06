@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MessageSquare, Reply, Flag, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageSquare, Reply, Flag, Loader2, Image as ImageIcon, X, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -17,17 +17,22 @@ interface Comment {
     id: string;
     name?: string | null;
     email: string;
+    roles?: string[];
+    school?: {
+      name: string;
+    } | null;
   };
   replies?: Comment[];
 }
 
 interface GuideForumProps {
   guideSanityId: string;
+  entrySanityId?: string;
   comments: Comment[];
   currentUserId?: string;
 }
 
-export function GuideForum({ guideSanityId, comments: initialComments, currentUserId }: GuideForumProps) {
+export function GuideForum({ guideSanityId, entrySanityId, comments: initialComments, currentUserId }: GuideForumProps) {
   const router = useRouter();
   const [comments, setComments] = useState(initialComments);
   const [newComment, setNewComment] = useState("");
@@ -36,6 +41,12 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [likingComments, setLikingComments] = useState<Set<string>>(new Set());
+
+  // Sync comments when props change (when switching between entries)
+  useEffect(() => {
+    setComments(initialComments);
+  }, [initialComments, entrySanityId]);
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -47,6 +58,7 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           guideSanityId,
+          entrySanityId,
           content: newComment.trim(),
           imageUrls: [],
         }),
@@ -75,6 +87,7 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           guideSanityId,
+          entrySanityId,
           content: replyContent.trim(),
           parentId,
           imageUrls: [],
@@ -162,7 +175,8 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
 
   const refreshComments = async () => {
     try {
-      const response = await fetch(`/api/guide-comments?guideSanityId=${guideSanityId}&parentId=null`);
+      const entryParam = entrySanityId ? `&entrySanityId=${entrySanityId}` : '';
+      const response = await fetch(`/api/guide-comments?guideSanityId=${guideSanityId}${entryParam}&parentId=null`);
       const data = await response.json();
       setComments(data.comments);
     } catch (error) {
@@ -170,9 +184,66 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
     }
   };
 
+  const handleLikeComment = async (commentId: string) => {
+    if (!currentUserId || likingComments.has(commentId)) return;
+
+    setLikingComments((prev) => new Set(prev).add(commentId));
+
+    try {
+      const response = await fetch(`/api/guide-comments/${commentId}/like`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Actualizar el comentario en el estado local
+        setComments((prevComments) =>
+          prevComments.map((comment) => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                likesCount: data.likesCount,
+                isLikedByCurrentUser: data.liked,
+              };
+            }
+            // También actualizar en las respuestas
+            if (comment.replies) {
+              return {
+                ...comment,
+                replies: comment.replies.map((reply) =>
+                  reply.id === commentId
+                    ? {
+                        ...reply,
+                        likesCount: data.likesCount,
+                        isLikedByCurrentUser: data.liked,
+                      }
+                    : reply
+                ),
+              };
+            }
+            return comment;
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Error liking comment:", error);
+    } finally {
+      setLikingComments((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(commentId);
+        return newSet;
+      });
+    }
+  };
+
   const renderComment = (comment: Comment, isReply = false) => {
     const isOwner = currentUserId === comment.user.id;
     const isEditing = editingId === comment.id;
+    
+    // Determinar el nombre de la escuela a mostrar
+    const isAdmin = comment.user.roles?.includes("ADMIN");
+    const schoolName = isAdmin ? "Al Fin Entendí" : (comment.user.school?.name || "Sin escuela");
 
     return (
       <div key={comment.id} className={`${isReply ? "ml-12 mt-4" : ""}`}>
@@ -185,10 +256,17 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
             </Avatar>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <p className="font-medium text-sm">
                   {comment.user.name || comment.user.email}
                 </p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  isAdmin 
+                    ? "bg-blue-100 text-blue-700 font-medium" 
+                    : "bg-gray-100 text-gray-600"
+                }`}>
+                  {schoolName}
+                </span>
                 <span className="text-xs text-gray-500">
                   {new Date(comment.createdAt).toLocaleDateString("es-MX", {
                     year: "numeric",
@@ -249,7 +327,24 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    {currentUserId && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleLikeComment(comment.id)}
+                        disabled={likingComments.has(comment.id)}
+                        className={comment.isLikedByCurrentUser ? "text-red-500" : ""}
+                      >
+                        <Heart
+                          className={`w-4 h-4 mr-1 ${
+                            comment.isLikedByCurrentUser ? "fill-current" : ""
+                          }`}
+                        />
+                        {comment.likesCount || 0}
+                      </Button>
+                    )}
+
                     {!isReply && currentUserId && (
                       <Button
                         size="sm"
@@ -355,7 +450,7 @@ export function GuideForum({ guideSanityId, comments: initialComments, currentUs
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <MessageSquare className="w-6 h-6" />
-          Foro de Discusión
+          {entrySanityId ? "Discusión de esta entrada" : "Foro de Discusión General"}
         </h2>
         <span className="text-sm text-gray-500">{comments.length} comentarios</span>
       </div>

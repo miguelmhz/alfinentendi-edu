@@ -43,13 +43,13 @@ const adminNavigation = [
         url: "/profesores",
       },
       {
-        title: "Grados y Grupos",
-        url: "/grados-grupos",
+        title: "Accesos a Libros",
+        url: "/accesos-libros",
       },
     ],
   },
   {
-    title: "Materias",
+    title: "Contenido",
     url: "#",
     icon: BookOpen,
     items: [
@@ -80,11 +80,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, loading } = useAuth()
   const navUser = React.useMemo(
     () => ({
+      id: user?.id,
       name: user?.name ?? user?.email ?? (loading ? "Cargando..." : "Usuario"),
       email: user?.email ?? (loading ? "Obteniendo datos" : "Sin correo"),
-      avatar: null,
+      avatar: undefined,
     }),
-    [user?.name, user?.email, loading],
+    [user, loading]
   )
 
   return (

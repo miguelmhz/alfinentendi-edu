@@ -13,15 +13,15 @@ export const DashboardHeader = () => {
     return <EnvVarWarning />;
   }
   return (
-    <header className="w-full flex justify-center border-b border-b-foreground/10  py-4 px-7 sticky top-0 z-50 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="w-full flex flex-col lg:flex-row justify-center border-b border-b-foreground/10  py-4 px-7 sticky top-0 z-50 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       {/*Control de sidebar y logo*/}
-      <div className="flex gap-6 w-[calc(331px+28px)] items-center">
+      <div className="flex justify-between lg:justify-start gap-6 lg:w-[calc(331px+28px)] items-center">
         <SidebarTrigger/>
         <Link href={"/"}>
           <Image src={Logo} alt="Logo" width={130} height={62} />
         </Link>
       </div>
-      <div className="w-full flex justify-between items-center p-3 px-5 text-sm">
+      <div className="w-full flex justify-between items-center p-3 lg:px-5 px-0 text-sm">
         <div className="flex gap-5 items-center font-semibold">
           <SecctionIndicator />
         </div>

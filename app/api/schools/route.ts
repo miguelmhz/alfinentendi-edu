@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { generateSlug, generateUniqueSlug } from "@/lib/utils/slug";
 
 export async function GET() {
   try {
@@ -29,6 +30,7 @@ export async function GET() {
     const schools = await prisma.school.findMany({
       select: {
         id: true,
+        slug: true,
         name: true,
         address: true,
         contact: true,
@@ -106,9 +108,20 @@ export async function POST(request: Request) {
       }
     }
 
+    // Generate unique slug from school name
+    const baseSlug = generateSlug(name);
+    const existingSlugs = await prisma.school.findMany({
+      select: { slug: true },
+    });
+    const slug = generateUniqueSlug(
+      baseSlug,
+      existingSlugs.map((s) => s.slug)
+    );
+
     const school = await prisma.school.create({
       data: {
         name: name.trim(),
+        slug,
         address: address?.trim() || null,
         contact: contact?.trim() || null,
         logoUrl: logoUrl || null,

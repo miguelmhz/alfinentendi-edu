@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ slug: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const params = await context.params;
-    const slug = params.slug;
+    const id = params.id;
 
-    const query = `*[_type == "book" && slug.current == $slug][0] {
+    // Intentar buscar por slug primero, luego por _id
+    const query = `*[_type == "book" && (slug.current == $id || _id == $id)][0] {
       _id,
       name,
       slug,
@@ -44,7 +45,7 @@ export async function GET(
       isPublic
     }`;
 
-    const book = await client.fetch(query, { slug });
+    const book = await client.fetch(query, { id });
 
     if (!book) {
       return NextResponse.json(

@@ -26,6 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 interface School {
   id: string
+  slug: string
   name: string
   address: string | null
   contact: string | null
@@ -181,7 +182,7 @@ export default function EscuelasPage() {
                   <TableRow 
                     key={school.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => router.push(`/escuelas/${school.id}`)}
+                    onClick={() => router.push(`/escuelas/${school.slug}`)}
                   >
                     <TableCell>
                       {school.logoUrl ? (
