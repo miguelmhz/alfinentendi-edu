@@ -50,6 +50,7 @@ model User {
   reviewedReports   CommentReport[]     @relation("ReviewedReports")
   teacherGroups     Group[]             @relation("TeacherGroups")
   guideComments     GuideComment[]      @relation("UserGuideComments")
+  guideCommentLikes GuideCommentLike[]  @relation("UserGuideCommentLikes")
   notifications     Notification[]
   assignedLicenses  SchoolBookLicense[] @relation("SchoolLicenseAssigner")
   coordinatedSchool School?             @relation("SchoolCoordinator")
@@ -278,20 +279,21 @@ model BookAssignment {
 }
 
 model GuideComment {
-  id            String          @id @default(cuid())
+  id            String             @id @default(cuid())
   guideSanityId String
   userId        String
   content       String
   imageUrls     String[]
   parentId      String?
-  isEdited      Boolean         @default(false)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  isEdited      Boolean            @default(false)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   entrySanityId String?
+  likes         GuideCommentLike[]
   reports       CommentReport[]
-  parent        GuideComment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies       GuideComment[]  @relation("CommentReplies")
-  user          User            @relation("UserGuideComments", fields: [userId], references: [id], onDelete: Cascade)
+  parent        GuideComment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies       GuideComment[]     @relation("CommentReplies")
+  user          User               @relation("UserGuideComments", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([guideSanityId])
   @@index([entrySanityId])
@@ -299,6 +301,20 @@ model GuideComment {
   @@index([parentId])
   @@index([createdAt])
   @@map("guide_comments")
+}
+
+model GuideCommentLike {
+  id        String       @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime     @default(now())
+  comment   GuideComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User         @relation("UserGuideCommentLikes", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId], name: "commentId_userId")
+  @@index([commentId])
+  @@index([userId])
+  @@map("guide_comment_likes")
 }
 
 model BookReview {
@@ -374,5 +390,10 @@ enum NotificationType {
   ACCESS_EXPIRED
   STUDENT_ADDED
   NEW_RESOURCE
+  COMMENT_REPLY
+  COMMENT_LIKE
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_EXPIRED
+  BOOK_ASSIGNED
   SYSTEM
 }
