@@ -22,7 +22,9 @@ import { State } from './types';
 import { isSidebarOpen, isToolbarOpen, UI_PLUGIN_ID, UIPlugin } from '@embedpdf/plugin-ui';
 import { ScrollPlugin, ScrollStrategy } from '@embedpdf/plugin-scroll/react';
 import { InteractionManagerPlugin } from '@embedpdf/plugin-interaction-manager';
-import { SelectionPlugin } from '@embedpdf/plugin-selection/react';
+import { SELECTION_PLUGIN_ID, SelectionPlugin } from '@embedpdf/plugin-selection/react';
+import { PdfAnnotationSubtype, PdfBlendMode } from '@embedpdf/models';
+import { AnnotationService } from '@/lib/annotations/annotation-service';
 
 export const commands: Record<string, Command<State>> = {
   // ─────────────────────────────────────────────────────────
@@ -489,6 +491,26 @@ export const commands: Record<string, Command<State>> = {
     },
     active: ({ state, documentId }) => {
       return isSidebarOpen(state.plugins, documentId, 'right', 'main', 'comment-panel');
+    },
+  },
+
+  'panel:toggle-annotation-properties': {
+    id: 'panel:toggle-annotation-properties',
+    labelKey: 'panel.annotationProperties',
+    icon: 'Palette',
+    categories: ['panels'],
+    action: ({ registry, documentId }) => {
+      const uiPlugin = registry.getPlugin<UIPlugin>(UI_PLUGIN_ID);
+      if (!uiPlugin || !uiPlugin.provides) return;
+
+      const uiCapability = uiPlugin.provides();
+      if (!uiCapability) return;
+
+      const scope = uiCapability.forDocument(documentId);
+      scope.toggleSidebar('right', 'main', 'annotation-properties-panel');
+    },
+    active: ({ state, documentId }) => {
+      return isSidebarOpen(state.plugins, documentId, 'right', 'main', 'annotation-properties-panel');
     },
   },
 
@@ -1012,6 +1034,150 @@ export const commands: Record<string, Command<State>> = {
         selectedAnnotation.object.pageIndex,
         selectedAnnotation.object.id,
       );
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────
+  // Quick Annotation Commands (Apply on Selection)
+  // ─────────────────────────────────────────────────────────
+  'annotation:apply-highlight': {
+    id: 'annotation:apply-highlight',
+    labelKey: 'annotation.highlight',
+    icon: 'Highlight',
+    categories: ['annotation'],
+    action: ({ registry, documentId, state }) => {
+      const annotation = registry.getPlugin<AnnotationPlugin>(ANNOTATION_PLUGIN_ID)?.provides();
+      const selection = registry.getPlugin<SelectionPlugin>(SELECTION_PLUGIN_ID)?.provides();
+      
+      if (!annotation || !selection) return;
+
+      const annotationScope = annotation.forDocument(documentId);
+      const selectionScope = selection.forDocument(documentId);
+      
+      const defaultSettings = getToolDefaultsById(state.plugins.annotation, 'highlight');
+
+      const formattedSelection = selectionScope.getFormattedSelection();
+      const selectionText = selectionScope.getSelectedText();
+
+      if (!formattedSelection || formattedSelection.length === 0) return;
+
+      for (const sel of formattedSelection) {
+        selectionText.wait((text: string[]) => {
+          const annotationId = crypto.randomUUID();
+          annotationScope.createAnnotation(sel.pageIndex, {
+            id: annotationId,
+            created: new Date(),
+            flags: ['print'],
+            type: PdfAnnotationSubtype.HIGHLIGHT,
+            blendMode: defaultSettings?.blendMode || PdfBlendMode.Multiply,
+            color: defaultSettings?.color || '#FFFF00',
+            opacity: defaultSettings?.opacity || 1,
+            pageIndex: sel.pageIndex,
+            rect: sel.rect,
+            segmentRects: sel.segmentRects,
+            custom: {
+              text: text.join('\n'),
+            },
+          } as any);
+          annotationScope.selectAnnotation(sel.pageIndex, annotationId);
+        }, () => {});
+      }
+
+      selectionScope.clear();
+    },
+  },
+
+  'annotation:apply-underline': {
+    id: 'annotation:apply-underline',
+    labelKey: 'annotation.underline',
+    icon: 'Underline',
+    categories: ['annotation'],
+    action: ({ registry, documentId, state }) => {
+      const annotation = registry.getPlugin<AnnotationPlugin>(ANNOTATION_PLUGIN_ID)?.provides();
+      const selection = registry.getPlugin<SelectionPlugin>(SELECTION_PLUGIN_ID)?.provides();
+      
+      if (!annotation || !selection) return;
+
+      const annotationScope = annotation.forDocument(documentId);
+      const selectionScope = selection.forDocument(documentId);
+      
+      const defaultSettings = getToolDefaultsById(state.plugins.annotation, 'underline');
+
+      const formattedSelection = selectionScope.getFormattedSelection();
+      const selectionText = selectionScope.getSelectedText();
+
+      if (!formattedSelection || formattedSelection.length === 0) return;
+
+      for (const sel of formattedSelection) {
+        selectionText.wait((text: string[]) => {
+          const annotationId = crypto.randomUUID();
+          annotationScope.createAnnotation(sel.pageIndex, {
+            id: annotationId,
+            created: new Date(),
+            flags: ['print'],
+            type: PdfAnnotationSubtype.UNDERLINE,
+            blendMode: defaultSettings?.blendMode || PdfBlendMode.Normal,
+            color: defaultSettings?.color || '#2196F3',
+            opacity: defaultSettings?.opacity || 1,
+            pageIndex: sel.pageIndex,
+            rect: sel.rect,
+            segmentRects: sel.segmentRects,
+            custom: {
+              text: text.join('\n'),
+            },
+          } as any);
+          annotationScope.selectAnnotation(sel.pageIndex, annotationId);
+        }, () => {});
+      }
+
+      selectionScope.clear();
+    },
+  },
+
+  'annotation:apply-strikeout': {
+    id: 'annotation:apply-strikeout',
+    labelKey: 'annotation.strikeout',
+    icon: 'Strikethrough',
+    categories: ['annotation'],
+    action: ({ registry, documentId, state }) => {
+      const annotation = registry.getPlugin<AnnotationPlugin>(ANNOTATION_PLUGIN_ID)?.provides();
+      const selection = registry.getPlugin<SelectionPlugin>(SELECTION_PLUGIN_ID)?.provides();
+      
+      if (!annotation || !selection) return;
+
+      const annotationScope = annotation.forDocument(documentId);
+      const selectionScope = selection.forDocument(documentId);
+      
+      const defaultSettings = getToolDefaultsById(state.plugins.annotation, 'strikeout');
+
+      const formattedSelection = selectionScope.getFormattedSelection();
+      const selectionText = selectionScope.getSelectedText();
+
+      if (!formattedSelection || formattedSelection.length === 0) return;
+
+      for (const sel of formattedSelection) {
+        selectionText.wait((text: string[]) => {
+          const annotationId = crypto.randomUUID();
+          annotationScope.createAnnotation(sel.pageIndex, {
+            id: annotationId,
+            created: new Date(),
+            flags: ['print'],
+            type: PdfAnnotationSubtype.STRIKEOUT,
+            blendMode: defaultSettings?.blendMode || PdfBlendMode.Normal,
+            color: defaultSettings?.color || '#F44336',
+            opacity: defaultSettings?.opacity || 1,
+            pageIndex: sel.pageIndex,
+            rect: sel.rect,
+            segmentRects: sel.segmentRects,
+            custom: {
+              text: text.join('\n'),
+            },
+          } as any);
+          annotationScope.selectAnnotation(sel.pageIndex, annotationId);
+        }, () => {});
+      }
+
+      selectionScope.clear();
     },
   },
 

@@ -91,14 +91,20 @@ import { CustomZoomToolbar } from "./components/custom-zoom-toolbar";
 import { ThumbnailsSidebar } from "./components/thumbnails-sidebar";
 import { SearchSidebar } from "./components/search-sidebar";
 import { OutlineSidebar } from "./components/outline-sidebar";
+import { CommentSidebar } from "./components/comment-sidebar";
+import { AnnotationPropertiesSidebar } from "./components/annotation-properties-sidebar";
 import { SchemaSelectionMenu } from "./ui/schema-selection-menu";
 import { LinkLayer } from "./components/LinkLayer";
+import { englishLocale, spanishLocale } from "./config/locale";
+import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
 
 const logger = new ConsoleLogger();
 
 interface ViewerSchemaPageProps {
   pdfUrl?: string;
   bookTitle?: string;
+  userName?: string;
+  bookId?: string;
 }
 
 /**
@@ -118,6 +124,8 @@ interface ViewerSchemaPageProps {
 export function ViewerSchemaPage({
   pdfUrl,
   bookTitle,
+  userName = "Usuario",
+  bookId,
 }: ViewerSchemaPageProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { engine, isLoading, error } = usePdfiumEngine({
@@ -125,6 +133,10 @@ export function ViewerSchemaPage({
   });
   const [totalPages, setTotalPages] = useState(1);
   const [links, setLinks] = useState<PdfLinkAnnoObject[]>([]);
+
+
+  // We don't need to track document ID separately
+  // The annotation plugin will handle documents internally
 
   const documentUrl =
     pdfUrl ||
@@ -146,6 +158,7 @@ export function ViewerSchemaPage({
         console.warn("No se pudo obtener el documento");
         return;
       }
+      console.log("Document loaded:", {document});
 
       // Guardar el total de páginas
       setTotalPages(document.pageCount);
@@ -179,6 +192,10 @@ export function ViewerSchemaPage({
     getLinks();
   }, [engine]);
 
+
+
+  
+
   // Memoize UIProvider props to prevent unnecessary remounts
   const uiComponents = useMemo(
     () => ({
@@ -186,6 +203,8 @@ export function ViewerSchemaPage({
       "thumbnails-sidebar": ThumbnailsSidebar,
       "search-sidebar": SearchSidebar,
       "outline-sidebar": OutlineSidebar,
+      "comment-sidebar": CommentSidebar,
+      "annotation-properties-sidebar": AnnotationPropertiesSidebar,
     }),
     []
   );
@@ -211,6 +230,12 @@ export function ViewerSchemaPage({
       createPluginRegistration(ScrollPluginPackage, {
         defaultStrategy: ScrollStrategy.Vertical,
       }),
+      createPluginRegistration(I18nPluginPackage, {
+    defaultLocale: 'es',
+    locales: [englishLocale, spanishLocale],
+    // Optional: Specify a fallback locale if translation is missing
+    fallbackLocale: 'es',
+  }),
       createPluginRegistration(InteractionManagerPluginPackage),
       createPluginRegistration(ZoomPluginPackage, {
         defaultZoomLevel: ZoomMode.FitPage,
@@ -233,7 +258,11 @@ export function ViewerSchemaPage({
       createPluginRegistration(RedactionPluginPackage),
       createPluginRegistration(CapturePluginPackage),
       createPluginRegistration(HistoryPluginPackage),
-      createPluginRegistration(AnnotationPluginPackage),
+      createPluginRegistration(AnnotationPluginPackage, {
+        annotationAuthor: userName,
+        selectAfterCreate: false,
+        deactivateToolAfterCreate: true,
+      }),
       createPluginRegistration(FullscreenPluginPackage),
       createPluginRegistration(ThumbnailPluginPackage, {
         width: 120,
@@ -263,9 +292,10 @@ export function ViewerSchemaPage({
     );
   }
 
+
   return (
     <div
-      className="flex h-screen flex-1 flex-col overflow-hidden"
+      className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] flex-1 flex-col overflow-hidden"
       ref={containerRef}
     >
       <div className="flex flex-1 select-none flex-col overflow-hidden">
@@ -287,6 +317,7 @@ export function ViewerSchemaPage({
                       <ViewerLayout
                         documentId={activeDocumentId}
                         links={links}
+                        bookId={bookId || ""}
                       />
                     </UIProvider>
                   ) : (
@@ -315,15 +346,24 @@ export function ViewerSchemaPage({
 function ViewerLayout({
   documentId,
   links,
+  bookId,
 }: {
   documentId: string;
   links: PdfLinkAnnoObject[];
+  bookId: string;
 }) {
   const { renderToolbar, renderSidebar } = useSchemaRenderer(documentId);
 
   const annotationMenu = useSelectionMenu("annotation", documentId);
   const redactionMenu = useSelectionMenu("redaction", documentId);
   const selectionMenu = useSelectionMenu("selection", documentId);
+
+
+  useAnnotationPersistence({
+    documentId: documentId,
+    bookId: bookId || "",
+    enabled: !!documentId && !!bookId,
+  });
 
   return (
     <>

@@ -48,6 +48,8 @@ function ToolbarItemRenderer({ item, documentId }: { item: ToolbarItem; document
     case 'command-button':
       return <CommandButtonRenderer item={item} documentId={documentId} />;
 
+    case 'tab-group':
+      return <TabGroupRenderer item={item} documentId={documentId} />;
    
     case 'divider':
       return <DividerRenderer item={item} />;
@@ -87,6 +89,32 @@ function CommandButtonRenderer({
         variant={item.variant}
         itemId={item.id}
       />
+    </div>
+  );
+}
+
+/**
+ * Renders a tab group (mode tabs)
+ */
+function TabGroupRenderer({
+  item,
+  documentId,
+}: {
+  item: Extract<ToolbarItem, { type: 'tab-group' }>;
+  documentId: string;
+}) {
+  return (
+    <div className="flex items-center gap-1" {...getUIItemProps(item)}>
+      {item.tabs.map((tab) => (
+        <div key={tab.id} {...getUIItemProps(tab)}>
+          <CommandButton
+            commandId={tab.commandId}
+            documentId={documentId}
+            variant={tab.variant || 'text'}
+            itemId={tab.id}
+          />
+        </div>
+      ))}
     </div>
   );
 }

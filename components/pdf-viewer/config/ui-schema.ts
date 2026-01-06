@@ -41,7 +41,6 @@ export const viewerUISchema: UISchema = {
           xs: {
             maxWidth: 640,
             hide: [
-              'annotate-mode',
               'shapes-mode',
               'redact-mode',
               'zoom-toolbar',
@@ -49,13 +48,14 @@ export const viewerUISchema: UISchema = {
               'pointer-button',
               'divider-3',
             ],
-            show: ['overflow-tabs-button'],
+            show: ['view-mode', 'annotate-mode', 'overflow-tabs-button'],
           },
           sm: {
             minWidth: 640,
             maxWidth: 768,
             hide: ['shapes-mode', 'redact-mode', 'zoom-toolbar'],
             show: [
+              'view-mode',
               'annotate-mode',
               'overflow-tabs-button',
               'pan-button',
@@ -65,12 +65,12 @@ export const viewerUISchema: UISchema = {
           },
           md: {
             minWidth: 768,
-            show: ['annotate-mode', 'shapes-mode', 'zoom-toolbar'],
+            show: ['view-mode', 'annotate-mode', 'shapes-mode', 'zoom-toolbar'],
             hide: ['zoom-menu-button'],
           },
           lg: {
             minWidth: 1024,
-            show: ['shapes-mode', 'redact-mode'],
+            show: ['view-mode', 'annotate-mode', 'shapes-mode', 'redact-mode'],
             hide: ['overflow-tabs-button'],
           },
         },
@@ -297,6 +297,12 @@ export const viewerUISchema: UISchema = {
             },
             {
               type: 'command-button',
+              id: 'annotation-properties-button',
+              commandId: 'panel:toggle-annotation-properties',
+              variant: 'icon',
+            },
+            {
+              type: 'command-button',
               id: 'undo-button',
               commandId: 'history:undo',
               variant: 'icon',
@@ -375,6 +381,12 @@ export const viewerUISchema: UISchema = {
               type: 'divider',
               id: 'divider-7',
               orientation: 'vertical',
+            },
+            {
+              type: 'command-button',
+              id: 'shapes-properties-button',
+              commandId: 'panel:toggle-annotation-properties',
+              variant: 'icon',
             },
             {
               type: 'command-button',
@@ -838,6 +850,22 @@ export const viewerUISchema: UISchema = {
       collapsible: true,
       defaultOpen: false,
     },
+
+    'annotation-properties-panel': {
+      id: 'annotation-properties-panel',
+      position: {
+        placement: 'right',
+        slot: 'main',
+        order: 1,
+      },
+      content: {
+        type: 'component',
+        componentId: 'annotation-properties-sidebar',
+      },
+      width: '280px',
+      collapsible: true,
+      defaultOpen: false,
+    },
   },
 
   // ─────────────────────────────────────────────────────────
@@ -847,6 +875,18 @@ export const viewerUISchema: UISchema = {
     annotation: {
       id: 'annotation',
       items: [
+        {
+          type: 'command-button',
+          id: 'edit-annotation-properties',
+          commandId: 'panel:toggle-annotation-properties',
+          variant: 'icon',
+        },
+        {
+          type: 'command-button',
+          id: 'add-annotation-comment',
+          commandId: 'panel:toggle-comment',
+          variant: 'icon',
+        },
         {
           type: 'command-button',
           id: 'delete-annotation',
@@ -875,6 +915,24 @@ export const viewerUISchema: UISchema = {
     selection: {
       id: 'selection',
       items: [
+        {
+          type: 'command-button',
+          id: 'highlight-selection',
+          commandId: 'annotation:apply-highlight',
+          variant: 'icon',
+        },
+        {
+          type: 'command-button',
+          id: 'underline-selection',
+          commandId: 'annotation:apply-underline',
+          variant: 'icon',
+        },
+        {
+          type: 'command-button',
+          id: 'strikeout-selection',
+          commandId: 'annotation:apply-strikeout',
+          variant: 'icon',
+        },
         {
           type: 'command-button',
           id: 'copy-selection',

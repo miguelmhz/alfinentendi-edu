@@ -30,33 +30,34 @@ model School {
 }
 
 model User {
-  id                String              @id @default(cuid())
-  email             String              @unique
-  name              String?
-  roles             UserRole[]
-  status            UserStatus          @default(INVITED)
-  schoolId          String?
-  createdBy         String?
-  lastLogin         DateTime?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  deletedAt         DateTime?
-  annotations       Annotation[]
-  assignedAccesses  BookAccess[]        @relation("AssignedByUser")
-  bookAccesses      BookAccess[]        @relation("UserBookAccess")
-  bookAssignments   BookAssignment[]    @relation("BookAssignments")
-  bookReviews       BookReview[]        @relation("UserBookReviews")
-  reportedComments  CommentReport[]     @relation("ReportedComments")
-  reviewedReports   CommentReport[]     @relation("ReviewedReports")
-  teacherGroups     Group[]             @relation("TeacherGroups")
-  guideComments     GuideComment[]      @relation("UserGuideComments")
-  guideCommentLikes GuideCommentLike[]  @relation("UserGuideCommentLikes")
-  notifications     Notification[]
-  assignedLicenses  SchoolBookLicense[] @relation("SchoolLicenseAssigner")
-  coordinatedSchool School?             @relation("SchoolCoordinator")
-  sessions          Session[]
-  studentGroups     UserGroup[]         @relation("StudentGroups")
-  school            School?             @relation("SchoolUsers", fields: [schoolId], references: [id])
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String?
+  roles               UserRole[]
+  status              UserStatus           @default(INVITED)
+  schoolId            String?
+  createdBy           String?
+  lastLogin           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  deletedAt           DateTime?
+  annotations         Annotation[]
+  annotationComments  AnnotationComment[]  @relation("UserAnnotationComments")
+  assignedAccesses    BookAccess[]         @relation("AssignedByUser")
+  bookAccesses        BookAccess[]         @relation("UserBookAccess")
+  bookAssignments     BookAssignment[]     @relation("BookAssignments")
+  bookReviews         BookReview[]         @relation("UserBookReviews")
+  reportedComments    CommentReport[]      @relation("ReportedComments")
+  reviewedReports     CommentReport[]      @relation("ReviewedReports")
+  teacherGroups       Group[]              @relation("TeacherGroups")
+  guideComments       GuideComment[]       @relation("UserGuideComments")
+  guideCommentLikes   GuideCommentLike[]   @relation("UserGuideCommentLikes")
+  notifications       Notification[]
+  assignedLicenses    SchoolBookLicense[]  @relation("SchoolLicenseAssigner")
+  coordinatedSchool   School?              @relation("SchoolCoordinator")
+  sessions            Session[]
+  studentGroups       UserGroup[]          @relation("StudentGroups")
+  school              School?              @relation("SchoolUsers", fields: [schoolId], references: [id])
 
   @@index([email])
   @@index([schoolId])
@@ -186,24 +187,49 @@ model SchoolBookLicense {
 }
 
 model Annotation {
-  id         String               @id @default(cuid())
-  userId     String
-  bookId     String
-  page       Int
-  type       String
-  content    String?
-  color      String?
-  position   Json?
-  visibility AnnotationVisibility @default(PRIVATE)
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
-  book       Book                 @relation(fields: [bookId], references: [id], onDelete: Cascade)
-  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String               @id @default(cuid())
+  userId          String
+  bookId          String
+  pageIndex       Int
+  type            String // Highlight, Underline, StrikeOut, Ink, Square, Circle, Line, FreeText, etc.
+  content         String? // Text content for FreeText annotations
+  color           String?
+  opacity         Float?               @default(1.0)
+  blendMode       String?              @default("Normal")
+  strokeWidth     Float? // For ink and shape annotations
+  rect            Json // Bounding rectangle {x, y, width, height}
+  segmentRects    Json? // For text markup annotations (highlight, underline, etc.)
+  inkPaths        Json? // For ink annotations
+  lineCoordinates Json? // For line/arrow annotations
+  vertices        Json? // For polygon/polyline annotations
+  customData      Json? // Additional custom data
+  visibility      AnnotationVisibility @default(PRIVATE)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  comments        AnnotationComment[]
+  book            Book                 @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([bookId])
-  @@index([page])
+  @@index([pageIndex])
+  @@index([type])
   @@map("annotations")
+}
+
+model AnnotationComment {
+  id           String     @id @default(cuid())
+  annotationId String
+  userId       String
+  content      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  annotation   Annotation @relation(fields: [annotationId], references: [id], onDelete: Cascade)
+  user         User       @relation("UserAnnotationComments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([annotationId])
+  @@index([userId])
+  @@map("annotation_comments")
 }
 
 model Session {
