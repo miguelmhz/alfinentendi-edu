@@ -1,16 +1,18 @@
 "use client";
 
 import { CommentSidebar } from "./comment-sidebar";
-import { useSearchParams } from "next/navigation";
+import { createContext, useContext } from "react";
+
+// Create a context to share bookId across components
+export const BookIdContext = createContext<string | undefined>(undefined);
 
 interface CommentSidebarWrapperProps {
   documentId: string;
 }
 
 export const CommentSidebarWrapper = ({ documentId }: CommentSidebarWrapperProps) => {
-  // Get bookId from URL or other source
-  // For now, we'll need to pass it through a different mechanism
-  // This is a temporary solution - ideally bookId should come from context
+  // Get bookId from context
+  const bookId = useContext(BookIdContext);
   
-  return <CommentSidebar documentId={documentId} bookId={undefined} />;
+  return <CommentSidebar documentId={documentId} bookId={bookId} />;
 };

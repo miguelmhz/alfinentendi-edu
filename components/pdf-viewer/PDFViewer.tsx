@@ -91,12 +91,13 @@ import { CustomZoomToolbar } from "./components/custom-zoom-toolbar";
 import { ThumbnailsSidebar } from "./components/thumbnails-sidebar";
 import { SearchSidebar } from "./components/search-sidebar";
 import { OutlineSidebar } from "./components/outline-sidebar";
-import { CommentSidebar } from "./components/comment-sidebar";
+import { CommentSidebarWrapper, BookIdContext } from "./components/comment-sidebar-wrapper";
 import { AnnotationPropertiesSidebar } from "./components/annotation-properties-sidebar";
 import { SchemaSelectionMenu } from "./ui/schema-selection-menu";
 import { LinkLayer } from "./components/LinkLayer";
 import { englishLocale, spanishLocale } from "./config/locale";
 import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
+import "./styles/toolbar-animations.css";
 
 const logger = new ConsoleLogger();
 
@@ -203,7 +204,7 @@ export function ViewerSchemaPage({
       "thumbnails-sidebar": ThumbnailsSidebar,
       "search-sidebar": SearchSidebar,
       "outline-sidebar": OutlineSidebar,
-      "comment-sidebar": CommentSidebar,
+      "comment-sidebar": CommentSidebarWrapper,
       "annotation-properties-sidebar": AnnotationPropertiesSidebar,
     }),
     []
@@ -294,46 +295,48 @@ export function ViewerSchemaPage({
 
 
   return (
-    <div
-      className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] flex-1 flex-col overflow-hidden"
-      ref={containerRef}
-    >
-      <div className="flex flex-1 select-none flex-col overflow-hidden">
-        <EmbedPDF engine={engine} logger={logger} plugins={plugins}>
-          {({ pluginsReady, activeDocumentId, documentStates }) => (
-            <>
-              {pluginsReady ? (
-                <div className="flex h-full flex-col">
-                  {/* <TabBar documentStates={documentStates} activeDocumentId={activeDocumentId} /> */}
+    <BookIdContext.Provider value={bookId}>
+      <div
+        className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] flex-1 flex-col overflow-hidden"
+        ref={containerRef}
+      >
+        <div className="flex flex-1 select-none flex-col overflow-hidden">
+          <EmbedPDF engine={engine} logger={logger} plugins={plugins}>
+            {({ pluginsReady, activeDocumentId, documentStates }) => (
+              <>
+                {pluginsReady ? (
+                  <div className="flex h-full flex-col">
+                    {/* <TabBar documentStates={documentStates} activeDocumentId={activeDocumentId} /> */}
 
-                  {/* Schema-driven UI with UIProvider */}
-                  {activeDocumentId ? (
-                    <UIProvider
-                      documentId={activeDocumentId}
-                      components={uiComponents}
-                      renderers={uiRenderers}
-                      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-                    >
-                      <ViewerLayout
+                    {/* Schema-driven UI with UIProvider */}
+                    {activeDocumentId ? (
+                      <UIProvider
                         documentId={activeDocumentId}
-                        links={links}
-                        bookId={bookId || ""}
-                      />
-                    </UIProvider>
-                  ) : (
-                    <EmptyState />
-                  )}
-                </div>
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <LoadingSpinner message="Initializing plugins..." />
-                </div>
-              )}
-            </>
-          )}
-        </EmbedPDF>
+                        components={uiComponents}
+                        renderers={uiRenderers}
+                        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+                      >
+                        <ViewerLayout
+                          documentId={activeDocumentId}
+                          links={links}
+                          bookId={bookId || ""}
+                        />
+                      </UIProvider>
+                    ) : (
+                      <EmptyState />
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <LoadingSpinner message="Initializing plugins..." />
+                  </div>
+                )}
+              </>
+            )}
+          </EmbedPDF>
+        </div>
       </div>
-    </div>
+    </BookIdContext.Provider>
   );
 }
 
@@ -370,8 +373,12 @@ function ViewerLayout({
       {/* Main Toolbar */}
       {renderToolbar("top", "main")}
 
-      {/* Secondary Toolbar (annotation/redaction/shapes) */}
-      {renderToolbar("top", "secondary")}
+      {/* Secondary Toolbar (annotation/redaction/shapes) - Floating with animation */}
+      <div className="pointer-events-none absolute left-0 right-0 top-[3.5rem] z-10 flex justify-center px-4">
+        <div className="secondary-toolbar-wrapper pointer-events-auto">
+          {renderToolbar("top", "secondary")}
+        </div>
+      </div>
 
       {/* Document Content Area */}
       <div

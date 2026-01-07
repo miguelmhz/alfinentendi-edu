@@ -17,7 +17,25 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = params ?? {};
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Annotation ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Resolve Prisma user ID (can differ from Supabase auth ID)
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email! },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const body = await request.json();
 
     // Check if annotation exists and belongs to user
@@ -32,7 +50,7 @@ export async function PATCH(
       );
     }
 
-    if (existingAnnotation.userId !== user.id) {
+    if (existingAnnotation.userId !== dbUser.id) {
       return NextResponse.json(
         { error: "Forbidden - You can only update your own annotations" },
         { status: 403 }
@@ -103,7 +121,23 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = params ?? {};
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Annotation ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const dbUser = await prisma.user.findUnique({
+      where: { email: user.email! },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     // Check if annotation exists and belongs to user
     const existingAnnotation = await prisma.annotation.findUnique({
@@ -117,7 +151,7 @@ export async function DELETE(
       );
     }
 
-    if (existingAnnotation.userId !== user.id) {
+    if (existingAnnotation.userId !== dbUser.id) {
       return NextResponse.json(
         { error: "Forbidden - You can only delete your own annotations" },
         { status: 403 }

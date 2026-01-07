@@ -65,24 +65,32 @@ export function useAnnotationPersistence({
         
         // Import annotations into the viewer
         for (const dbAnnotation of dbAnnotations) {
-          console.log("📝 Creating annotation in viewer:", dbAnnotation.id);
+          console.log("📝 Creating annotation in viewer:", dbAnnotation.id, "type:", dbAnnotation.type);
+          
+          // Skip ink annotations (type 15) that don't have inkPaths
+          const annotationType = parseInt(dbAnnotation.type);
+          if (annotationType === 15 && !dbAnnotation.inkPaths) {
+            console.warn("⚠️ Skipping ink annotation without inkPaths:", dbAnnotation.id);
+            continue;
+          }
           
           // Track the DB ID BEFORE creating to prevent re-saving
           annotationDbIdMap.current.set(dbAnnotation.id, dbAnnotation.id);
           
           annotation?.createAnnotation(dbAnnotation.pageIndex, {
             id: dbAnnotation.id,
-            type: parseInt(dbAnnotation.type), // Convert string to number
-            color: dbAnnotation.color,
-            opacity: dbAnnotation.opacity,
+            type: annotationType,
+            color: dbAnnotation.color || undefined,
+            opacity: dbAnnotation.opacity ?? undefined,
             blendMode: dbAnnotation.blendMode ? parseInt(dbAnnotation.blendMode) : undefined,
-            strokeWidth: dbAnnotation.strokeWidth,
+            strokeWidth: dbAnnotation.strokeWidth ?? undefined,
             rect: dbAnnotation.rect,
-            segmentRects: dbAnnotation.segmentRects,
-            inkPaths: dbAnnotation.inkPaths,
-            lineCoordinates: dbAnnotation.lineCoordinates,
-            vertices: dbAnnotation.vertices,
-            custom: dbAnnotation.customData,
+            segmentRects: dbAnnotation.segmentRects || undefined,
+            inkPaths: dbAnnotation.inkPaths || undefined,
+            inkList: dbAnnotation.inkPaths || undefined,
+            lineCoordinates: dbAnnotation.lineCoordinates || undefined,
+            vertices: dbAnnotation.vertices || undefined,
+            custom: dbAnnotation.customData || undefined,
           } as any);
         }
         
@@ -112,6 +120,14 @@ export function useAnnotationPersistence({
 
           // Save new annotation to database
           const anno = event.annotation as any;
+          console.log({anno})
+          console.log('💾 Saving annotation - type:', anno.type, 'inkPaths:', anno.inkPaths, 'inkList:', anno.inkList, 'paths:', anno.paths);
+
+          const inkData =
+            anno.inkPaths ??
+            anno.paths ??
+            anno.inkList;
+          
           const savedAnnotation = await AnnotationService.saveAnnotation({
             bookId,
             pageIndex: event.pageIndex,
@@ -123,7 +139,7 @@ export function useAnnotationPersistence({
             strokeWidth: anno.strokeWidth,
             rect: anno.rect,
             segmentRects: anno.segmentRects,
-            inkPaths: anno.inkPaths,
+            inkPaths: inkData, // Try inkPaths, paths, then inkList
             lineCoordinates: anno.lineCoordinates,
             vertices: anno.vertices,
             customData: anno.custom,
@@ -134,12 +150,30 @@ export function useAnnotationPersistence({
           console.log('Annotation saved to database:', savedAnnotation.id);
         }
 
-        if (event.type === 'update' && event.committed) {
+        if (event.type === 'update') {
+          const patch = (event as any).patch;
+          const hasMeaningfulPatch =
+            !!patch &&
+            Object.keys(patch).some((key) =>
+              ['color', 'opacity', 'blendMode', 'strokeWidth', 'rect', 'custom', 'customData', 'author'].includes(key)
+            );
+          if (!event.committed && !hasMeaningfulPatch) {
+            console.log('🛑 Skipping non-committed update without relevant patch');
+            return;
+          }
+
           const dbId = annotationDbIdMap.current.get(event.annotation.id);
-          if (!dbId) return;
+          console.log('🔄 Update event - annotation.id:', event.annotation.id, 'dbId:', dbId);
+          console.log('📋 Current map:', Array.from(annotationDbIdMap.current.entries()));
+          
+          if (!dbId) {
+            console.warn('⚠️ No dbId found for annotation:', event.annotation.id);
+            return;
+          }
 
           // Update annotation in database
           const anno = event.annotation as any;
+          console.log('✏️ Persisting annotation patch', patch);
           await AnnotationService.updateAnnotation(dbId, {
             color: anno.color,
             opacity: anno.opacity,
@@ -148,7 +182,7 @@ export function useAnnotationPersistence({
             rect: anno.rect,
             customData: anno.custom,
           });
-          console.log('Annotation updated in database:', dbId);
+          console.log('✅ Annotation updated in database:', dbId);
         }
 
         if (event.type === 'delete' && event.committed) {

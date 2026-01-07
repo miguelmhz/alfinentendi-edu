@@ -42,7 +42,7 @@ export const viewerUISchema: UISchema = {
             maxWidth: 640,
             hide: [
               'shapes-mode',
-              'redact-mode',
+              // 'redact-mode', // REMOVED
               'zoom-toolbar',
               'pan-button',
               'pointer-button',
@@ -53,7 +53,7 @@ export const viewerUISchema: UISchema = {
           sm: {
             minWidth: 640,
             maxWidth: 768,
-            hide: ['shapes-mode', 'redact-mode', 'zoom-toolbar'],
+            hide: ['shapes-mode', /* 'redact-mode', */ 'zoom-toolbar'], // REMOVED redact-mode
             show: [
               'view-mode',
               'annotate-mode',
@@ -70,7 +70,7 @@ export const viewerUISchema: UISchema = {
           },
           lg: {
             minWidth: 1024,
-            show: ['view-mode', 'annotate-mode', 'shapes-mode', 'redact-mode'],
+            show: ['view-mode', 'annotate-mode', 'shapes-mode' /* , 'redact-mode' */], // REMOVED redact-mode
             hide: ['overflow-tabs-button'],
           },
         },
@@ -83,17 +83,18 @@ export const viewerUISchema: UISchema = {
           alignment: 'start',
           gap: 1,
           items: [
-            {
-              type: 'command-button',
-              id: 'document-menu-button',
-              commandId: 'document:menu',
-              variant: 'icon',
-            },
-            {
-              type: 'divider',
-              id: 'divider-1',
-              orientation: 'vertical',
-            },
+            // REMOVED: Document menu (Abrir, Cerrar, Imprimir, Exportar, Propiedades)
+            // {
+            //   type: 'command-button',
+            //   id: 'document-menu-button',
+            //   commandId: 'document:menu',
+            //   variant: 'icon',
+            // },
+            // {
+            //   type: 'divider',
+            //   id: 'divider-1',
+            //   orientation: 'vertical',
+            // },
             {
               type: 'command-button',
               id: 'sidebar-button',
@@ -167,7 +168,7 @@ export const viewerUISchema: UISchema = {
             {
               id: 'view-mode',
               commandId: 'mode:view',
-              variant: 'text',
+              variant: 'icon', // Changed to icon only (cursor)
             },
             {
               id: 'annotate-mode',
@@ -179,11 +180,12 @@ export const viewerUISchema: UISchema = {
               commandId: 'mode:shapes',
               variant: 'text',
             },
-            {
-              id: 'redact-mode',
-              commandId: 'mode:redact',
-              variant: 'text',
-            },
+            // REMOVED: Redact mode
+            // {
+            //   id: 'redact-mode',
+            //   commandId: 'mode:redact',
+            //   variant: 'text',
+            // },
             {
               id: 'overflow-tabs-button',
               commandId: 'tabs:overflow-menu',
@@ -235,12 +237,12 @@ export const viewerUISchema: UISchema = {
         breakpoints: {
           sm: {
             maxWidth: 640,
-            hide: ['redo-button', 'undo-button'],
+            hide: [/* 'redo-button', 'undo-button' */], // REMOVED - buttons already removed
             show: ['overflow-annotation-tools'],
           },
           md: {
             minWidth: 640,
-            show: ['redo-button', 'undo-button'],
+            show: [/* 'redo-button', 'undo-button' */], // REMOVED - buttons already removed
             hide: ['overflow-annotation-tools'],
           },
         },
@@ -260,12 +262,13 @@ export const viewerUISchema: UISchema = {
               commandId: 'annotation:add-highlight',
               variant: 'icon',
             },
-            {
-              type: 'command-button',
-              id: 'add-strikeout',
-              commandId: 'annotation:add-strikeout',
-              variant: 'icon',
-            },
+            // REMOVED: Strikeout (tachado)
+            // {
+            //   type: 'command-button',
+            //   id: 'add-strikeout',
+            //   commandId: 'annotation:add-strikeout',
+            //   variant: 'icon',
+            // },
             {
               type: 'command-button',
               id: 'add-underline',
@@ -284,12 +287,13 @@ export const viewerUISchema: UISchema = {
               commandId: 'annotation:add-text',
               variant: 'icon',
             },
-            {
-              type: 'command-button',
-              id: 'add-stamp',
-              commandId: 'annotation:add-stamp',
-              variant: 'icon',
-            },
+            // REMOVED: Stamp (sello)
+            // {
+            //   type: 'command-button',
+            //   id: 'add-stamp',
+            //   commandId: 'annotation:add-stamp',
+            //   variant: 'icon',
+            // },
             {
               type: 'divider',
               id: 'divider-6',
@@ -301,18 +305,19 @@ export const viewerUISchema: UISchema = {
               commandId: 'panel:toggle-annotation-properties',
               variant: 'icon',
             },
-            {
-              type: 'command-button',
-              id: 'undo-button',
-              commandId: 'history:undo',
-              variant: 'icon',
-            },
-            {
-              type: 'command-button',
-              id: 'redo-button',
-              commandId: 'history:redo',
-              variant: 'icon',
-            },
+            // REMOVED: Undo/Redo buttons
+            // {
+            //   type: 'command-button',
+            //   id: 'undo-button',
+            //   commandId: 'history:undo',
+            //   variant: 'icon',
+            // },
+            // {
+            //   type: 'command-button',
+            //   id: 'redo-button',
+            //   commandId: 'history:redo',
+            //   variant: 'icon',
+            // },
             {
               type: 'command-button',
               id: 'overflow-annotation-tools',
@@ -341,12 +346,13 @@ export const viewerUISchema: UISchema = {
           alignment: 'start',
           gap: 2,
           items: [
-            {
-              type: 'command-button',
-              id: 'add-rectangle',
-              commandId: 'annotation:add-rectangle',
-              variant: 'icon',
-            },
+            // REMOVED: Rectangle (cuadrado)
+            // {
+            //   type: 'command-button',
+            //   id: 'add-rectangle',
+            //   commandId: 'annotation:add-rectangle',
+            //   variant: 'icon',
+            // },
             {
               type: 'command-button',
               id: 'add-circle',
@@ -365,18 +371,19 @@ export const viewerUISchema: UISchema = {
               commandId: 'annotation:add-arrow',
               variant: 'icon',
             },
-            {
-              type: 'command-button',
-              id: 'add-polygon',
-              commandId: 'annotation:add-polygon',
-              variant: 'icon',
-            },
-            {
-              type: 'command-button',
-              id: 'add-polyline',
-              commandId: 'annotation:add-polyline',
-              variant: 'icon',
-            },
+            // REMOVED: Polygon and Polyline
+            // {
+            //   type: 'command-button',
+            //   id: 'add-polygon',
+            //   commandId: 'annotation:add-polygon',
+            //   variant: 'icon',
+            // },
+            // {
+            //   type: 'command-button',
+            //   id: 'add-polyline',
+            //   commandId: 'annotation:add-polyline',
+            //   variant: 'icon',
+            // },
             {
               type: 'divider',
               id: 'divider-7',
@@ -388,18 +395,19 @@ export const viewerUISchema: UISchema = {
               commandId: 'panel:toggle-annotation-properties',
               variant: 'icon',
             },
-            {
-              type: 'command-button',
-              id: 'undo-button',
-              commandId: 'history:undo',
-              variant: 'icon',
-            },
-            {
-              type: 'command-button',
-              id: 'redo-button',
-              commandId: 'history:redo',
-              variant: 'icon',
-            },
+            // REMOVED: Undo/Redo buttons
+            // {
+            //   type: 'command-button',
+            //   id: 'undo-button',
+            //   commandId: 'history:undo',
+            //   variant: 'icon',
+            // },
+            // {
+            //   type: 'command-button',
+            //   id: 'redo-button',
+            //   commandId: 'history:redo',
+            //   variant: 'icon',
+            // },
           ],
         },
         { type: 'spacer', id: 'spacer-6', flex: true },
@@ -806,12 +814,13 @@ export const viewerUISchema: UISchema = {
             label: 'Thumbnails',
             componentId: 'thumbnails-sidebar',
           },
-          {
-            id: 'outline',
-            labelKey: 'panel.outline',
-            label: 'Outline',
-            componentId: 'outline-sidebar',
-          },
+          // REMOVED: Outline (Índice)
+          // {
+          //   id: 'outline',
+          //   labelKey: 'panel.outline',
+          //   label: 'Outline',
+          //   componentId: 'outline-sidebar',
+          // },
         ],
       },
       width: '250px',

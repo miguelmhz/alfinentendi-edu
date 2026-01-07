@@ -2,6 +2,66 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 
+// GET /api/comments?bookId=xxx - Get all comments for a book's annotations
+export async function GET(request: NextRequest) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const searchParams = request.nextUrl.searchParams;
+    const bookId = searchParams.get("bookId");
+
+    if (!bookId) {
+      return NextResponse.json(
+        { error: "bookId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get all comments for annotations in this book
+    const comments = await prisma.annotationComment.findMany({
+      where: {
+        annotation: {
+          bookId,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        annotation: {
+          select: {
+            id: true,
+            pageIndex: true,
+            type: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return NextResponse.json(comments);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch comments" },
+      { status: 500 }
+    );
+  }
+}
+
 // POST /api/comments - Create a new comment on an annotation
 export async function POST(request: NextRequest) {
   try {

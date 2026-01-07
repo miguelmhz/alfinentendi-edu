@@ -40,6 +40,8 @@ interface AnnotationComment {
   comment: string;
   createdAt: Date;
   annotationType: any;
+  authorName?: string;
+  authorEmail?: string;
 }
 
 export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
@@ -50,6 +52,42 @@ export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
 
   // Get selected annotation directly without memoization to avoid dependency issues
   const selectedAnnotation = annotation?.getSelectedAnnotation();
+
+  // Load comments from database on mount
+  useEffect(() => {
+    const loadComments = async () => {
+      if (!bookId) return;
+
+      try {
+        console.log("📥 Loading comments for bookId:", bookId);
+        const response = await fetch(`/api/comments?bookId=${bookId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to load comments');
+        }
+
+        const dbComments = await response.json();
+        console.log("✅ Loaded comments from DB:", dbComments.length);
+
+        // Transform DB comments to component format
+        const transformedComments: AnnotationComment[] = dbComments.map((c: any) => ({
+          annotationId: c.annotationId,
+          pageIndex: c.annotation.pageIndex,
+          comment: c.content,
+          createdAt: new Date(c.createdAt),
+          annotationType: c.annotation.type,
+          authorName: c.user?.name || 'Usuario',
+          authorEmail: c.user?.email,
+        }));
+
+        setComments(transformedComments);
+      } catch (error) {
+        console.error('Error loading comments:', error);
+      }
+    };
+
+    loadComments();
+  }, [bookId]);
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !selectedAnnotation) return;
@@ -79,6 +117,8 @@ export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
         comment: newComment.trim(),
         createdAt: new Date(savedComment.createdAt),
         annotationType: selectedAnnotation.object.type,
+        authorName: savedComment.user?.name || 'Usuario',
+        authorEmail: savedComment.user?.email,
       };
 
       setComments([...comments, comment]);
@@ -166,7 +206,17 @@ export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
                     className="rounded-lg border bg-background p-3"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="flex-1 text-sm">{comment.comment}</p>
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center gap-2">
+                          <span className="text-xs font-medium text-primary">
+                            {comment.authorName || 'Usuario'}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {comment.createdAt.toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm">{comment.comment}</p>
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -179,9 +229,6 @@ export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
-                    </div>
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      {comment.createdAt.toLocaleString()}
                     </div>
                   </div>
                 ))
@@ -213,8 +260,13 @@ export const CommentSidebar = ({ documentId, bookId }: CommentSidebarProps) => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <div className="font-medium">
-                        Página {comment.pageIndex + 1}
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          Página {comment.pageIndex + 1}
+                        </span>
+                        <span className="text-primary">
+                          • {comment.authorName || 'Usuario'}
+                        </span>
                       </div>
                       <p className="mt-1 text-muted-foreground">
                         {comment.comment}
