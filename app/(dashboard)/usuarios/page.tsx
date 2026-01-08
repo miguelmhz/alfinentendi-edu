@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Plus, MoreVertical, Pencil, Trash2, Eye, Mail, Filter, ArrowUpDown } from "lucide-react"
@@ -78,7 +78,7 @@ interface Grade {
 type SortField = "name" | "email" | "createdAt" | "lastLogin"
 type SortOrder = "asc" | "desc"
 
-export default function UsuariosPage() {
+function UsuariosContent() {
   const searchParams = useSearchParams()
   const { user, isAdmin, loading: authLoading } = useAuth()
   const [users, setUsers] = useState<User[]>([])
@@ -652,5 +652,13 @@ export default function UsuariosPage() {
         onSuccess={handleSuccess}
       />
     </div>
+  )
+}
+
+export default function UsuariosPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Cargando...</div>}>
+      <UsuariosContent />
+    </Suspense>
   )
 }

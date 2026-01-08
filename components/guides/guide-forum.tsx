@@ -13,6 +13,8 @@ interface Comment {
   imageUrls: string[];
   isEdited: boolean;
   createdAt: string;
+  isLikedByCurrentUser?: boolean;
+  likesCount?: number;
   user: {
     id: string;
     name?: string | null;

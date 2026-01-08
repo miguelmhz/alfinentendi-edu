@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 // POST /api/annotations/[id]/comments - Add a comment to an annotation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -17,7 +17,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id: annotationId } = params;
+    const { id: annotationId } = await params;
     const body = await request.json();
     const { content } = body;
 

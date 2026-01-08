@@ -172,7 +172,7 @@ export async function PUT(
       const schoolWithCoordinator = await prisma.school.findFirst({
         where: {
           coordinatorId,
-          id: { not: schoolId },
+          id: { not: existingSchool.id },
         },
       });
 

@@ -21,10 +21,20 @@ export async function checkBookAccess(
         id: true,
         schoolId: true,
         roles: true,
-        groups: {
+        teacherGroups: {
           select: {
             id: true,
             gradeId: true,
+          },
+        },
+        studentGroups: {
+          select: {
+            group: {
+              select: {
+                id: true,
+                gradeId: true,
+              },
+            },
           },
         },
       },
@@ -54,9 +64,14 @@ export async function checkBookAccess(
       return { hasAccess: true, assignmentType: "direct" };
     }
 
-    // 2. Verificar asignación por grupo (solo para profesores con grupos)
-    if (user.groups.length > 0) {
-      const groupIds = user.groups.map(g => g.id);
+    // 2. Verificar asignación por grupo
+    const allGroups = [
+      ...user.teacherGroups,
+      ...user.studentGroups.map(sg => sg.group)
+    ];
+    
+    if (allGroups.length > 0) {
+      const groupIds = allGroups.map(g => g.id);
       const groupAssignment = await prisma.bookAssignment.findFirst({
         where: {
           bookSanityId,
@@ -76,8 +91,8 @@ export async function checkBookAccess(
     }
 
     // 3. Verificar asignación por grado
-    if (user.groups.length > 0) {
-      const gradeIds = user.groups.map(g => g.gradeId);
+    if (allGroups.length > 0) {
+      const gradeIds = allGroups.map(g => g.gradeId);
       const gradeAssignment = await prisma.bookAssignment.findFirst({
         where: {
           bookSanityId,
@@ -135,10 +150,20 @@ export async function getUserBooks(userId: string): Promise<string[]> {
         id: true,
         schoolId: true,
         roles: true,
-        groups: {
+        teacherGroups: {
           select: {
             id: true,
             gradeId: true,
+          },
+        },
+        studentGroups: {
+          select: {
+            group: {
+              select: {
+                id: true,
+                gradeId: true,
+              },
+            },
           },
         },
       },
@@ -152,9 +177,15 @@ export async function getUserBooks(userId: string): Promise<string[]> {
     const assignedToIds: string[] = [userId];
 
     if (user.schoolId) assignedToIds.push(user.schoolId);
-    if (user.groups.length > 0) {
-      assignedToIds.push(...user.groups.map(g => g.id));
-      assignedToIds.push(...user.groups.map(g => g.gradeId));
+    
+    const allGroups = [
+      ...user.teacherGroups,
+      ...user.studentGroups.map(sg => sg.group)
+    ];
+    
+    if (allGroups.length > 0) {
+      assignedToIds.push(...allGroups.map(g => g.id));
+      assignedToIds.push(...allGroups.map(g => g.gradeId));
     }
 
     const assignments = await prisma.bookAssignment.findMany({

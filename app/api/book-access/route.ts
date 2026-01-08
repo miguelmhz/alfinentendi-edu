@@ -167,9 +167,11 @@ export async function POST(request: Request) {
       case "grade":
         const gradeUsers = await prisma.user.findMany({
           where: {
-            groups: {
+            studentGroups: {
               some: {
-                gradeId: targetId,
+                group: {
+                  gradeId: targetId,
+                },
               },
             },
             deletedAt: null,
@@ -182,9 +184,9 @@ export async function POST(request: Request) {
       case "group":
         const groupUsers = await prisma.user.findMany({
           where: {
-            groups: {
+            studentGroups: {
               some: {
-                id: targetId,
+                groupId: targetId,
               },
             },
             deletedAt: null,
