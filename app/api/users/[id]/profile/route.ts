@@ -51,14 +51,18 @@ export async function GET(
             name: true,
           },
         },
-        groups: {
+        studentGroups: {
           select: {
-            id: true,
-            name: true,
-            grade: {
+            group: {
               select: {
+                id: true,
                 name: true,
-                level: true,
+                grade: {
+                  select: {
+                    name: true,
+                    level: true,
+                  },
+                },
               },
             },
           },
