@@ -297,7 +297,7 @@ export function ViewerSchemaPage({
   return (
     <BookIdContext.Provider value={bookId}>
       <div
-        className="flex h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] flex-1 flex-col overflow-hidden"
+        className="flex h-full flex-1 flex-col overflow-hidden"
         ref={containerRef}
       >
         <div className="flex flex-1 select-none flex-col overflow-hidden">

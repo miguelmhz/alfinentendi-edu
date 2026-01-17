@@ -22,18 +22,16 @@ export default function DashboardLayout({
 }>) {
   return (
     <SidebarProvider 
-      className="flex flex-col"
+      className="flex flex-col h-screen"
       style={{
         "--sidebar-width": "331px",
       } as React.CSSProperties}
     >
       <DashboardHeader />
-      <div className="flex flex-1">
+      <div className="flex flex-1 overflow-hidden">
         <AppSidebar />
         <SidebarInset>
-          <div className="flex-1 w-full flex flex-col gap-20 items-center">
-            {children}
-          </div>
+          {children}
           <Toaster />
         </SidebarInset>
       </div>

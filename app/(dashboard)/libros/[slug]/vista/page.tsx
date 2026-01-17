@@ -112,13 +112,11 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
   const pdfUrl = `/api/books/${slug}/pdf${type === 'preview' ? '?type=preview' : ''}`;
 
   return (
-    <div className="h-screen w-full">
-      <ViewerSchemaPage 
-        pdfUrl={pdfUrl} 
-        bookTitle={book.name} 
-        userName={userName}
-        bookId={prismaBook.id}
-      />
-    </div>
+    <ViewerSchemaPage 
+      pdfUrl={pdfUrl} 
+      bookTitle={book.name} 
+      userName={userName}
+      bookId={prismaBook.id}
+    />
   );
 }
