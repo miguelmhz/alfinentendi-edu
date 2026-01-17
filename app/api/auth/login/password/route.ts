@@ -65,13 +65,13 @@ export async function POST(request: Request) {
     }
 
     // Verificar que el usuario tenga el rol apropiado para este tipo de login
-    // El login con contraseña es para TEACHER, COORDINATOR y ADMIN
-    const allowedRoles = ["TEACHER", "COORDINATOR", "ADMIN"];
+    // El login con contraseña es para TEACHER, COORDINATOR, ADMIN y PUBLIC
+    const allowedRoles = ["TEACHER", "COORDINATOR", "ADMIN", "PUBLIC"];
     const hasAllowedRole = user.roles.some(role => allowedRoles.includes(role));
 
     if (!hasAllowedRole) {
       return NextResponse.json(
-        { error: "Este método de autenticación es solo para profesores, coordinadores y administradores" },
+        { error: "Este método de autenticación no está disponible para tu tipo de usuario" },
         { status: 403 }
       );
     }

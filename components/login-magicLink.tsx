@@ -62,9 +62,9 @@ export function LoginMagicLink({
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="w-full border-none shadow-none">
         <CardHeader className="px-0 pt-0 pb-6">
-          <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
+          <CardTitle className="text-2xl">Acceso Escuela</CardTitle>
           <CardDescription>
-            <b>Ingresa tu correo electrónico para recibir un enlace de acceso.</b> 
+            <b>Ingresa tu correo electrónico institucional para recibir un enlace de acceso.</b> 
             <br />
 Revisa tu bandeja de entrada y sigue las instrucciones. Si no lo ves, consulta correo no deseado.
           </CardDescription>
@@ -77,7 +77,7 @@ Revisa tu bandeja de entrada y sigue las instrucciones. Si no lo ves, consulta c
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
+                  placeholder="ejemplo@escuela.edu"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -85,11 +85,33 @@ Revisa tu bandeja de entrada y sigue las instrucciones. Si no lo ves, consulta c
               </div>
               
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Logging in..." : "Login"}
+              <Button size="lg" type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Enviando enlace..." : "Enviar enlace de acceso"}
               </Button>
+              
+              <div className="border-t pt-4 mt-2">
+                <p className="text-sm text-muted-foreground text-center mb-3">
+                  ¿Tu institución aún no tiene acceso?
+                </p>
+                <a
+                  href="mailto:alfinentendi@gmail.com?subject=Solicitud de acceso institucional"
+                  className="block text-center"
+                >
+                  <Button type="button" variant="outline" size="lg" className="w-full">
+                    Contactar con ventas
+                  </Button>
+                </a>
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Escríbenos a{" "}
+                  <a
+                    href="mailto:alfinentendi@gmail.com"
+                    className="underline hover:text-primary"
+                  >
+                    alfinentendi@gmail.com
+                  </a>
+                </p>
+              </div>
             </div>
-            
           </form>
         </CardContent>
       </Card>
