@@ -13,7 +13,7 @@ interface BookCardProps {
     slug: { current: string };
     description?: any;
     authors?: { name: string; slug: { current: string } }[];
-    categories?: { name: string; slug: { current: string } }[];
+    categories?: { title: string; slug: { current: string } }[];
     coverImage?: {
       asset: {
         url: string;
@@ -106,7 +106,7 @@ export function BookCard({ book, averageRating, totalReviews }: BookCardProps) {
                 key={cat.slug.current}
                 className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded"
               >
-                {cat.name}
+                {cat.title}
               </span>
             ))}
             {book.categories.length > 2 && (

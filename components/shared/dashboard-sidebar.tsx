@@ -10,6 +10,12 @@ import {
   BookMarked,
   FileText,
   Layers,
+  Home,
+  Video,
+  FileQuestion,
+  FolderOpen,
+  UserCircle,
+  CreditCard,
 } from "lucide-react"
 
 
@@ -26,6 +32,53 @@ import { NavMain } from "../ui/sidebar/nav-main"
 import { NavProjects } from "../ui/sidebar/nav-projects"
 import { NavUser } from "../ui/sidebar/nav-user"
 import { useAuth } from "@/hooks/useAuth"
+
+const publicNavigation = [
+  {
+    title: "Inicio",
+    url: "/",
+    icon: Home,
+    isActive: true,
+  },
+  {
+    title: "Contenido",
+    url: "#",
+    icon: BookOpen,
+    items: [
+      {
+        title: "Libros",
+        url: "/libros",
+      },
+      {
+        title: "Videos",
+        url: "/videos",
+      },
+      {
+        title: "Guías",
+        url: "/guias",
+      },
+      {
+        title: "Recursos",
+        url: "/recursos",
+      },
+    ],
+  },
+  {
+    title: "Configuración",
+    url: "#",
+    icon: Settings,
+    items: [
+      {
+        title: "Perfil",
+        url: "/perfil",
+      },
+      {
+        title: "Suscripciones",
+        url: "/suscripciones",
+      },
+    ],
+  },
+]
 
 const adminNavigation = [
   {
@@ -77,7 +130,7 @@ const adminNavigation = [
 ]
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user, loading } = useAuth()
+  const { user, loading, isAdmin } = useAuth()
   const navUser = React.useMemo(
     () => ({
       id: user?.id,
@@ -87,6 +140,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }),
     [user, loading]
   )
+
+  const navigation = isAdmin ? adminNavigation : publicNavigation
 
   return (
     <Sidebar
@@ -102,7 +157,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <NavUser user={navUser} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={adminNavigation} />
+        <NavMain items={navigation} />
       </SidebarContent>
     </Sidebar>
   )

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function LoginPassword({
   className,
@@ -56,9 +57,9 @@ export function LoginPassword({
       console.log("error catch", error);
       console.log(error);
       if (error instanceof Error) {
-        setError(error.message);
+        toast.error(error.message);
       } else {
-        setError("Error inesperado");
+        toast.error("Error inesperado");
       }
     } finally {
       setIsLoading(false);
@@ -71,13 +72,13 @@ export function LoginPassword({
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      toast.error("Las contraseñas no coinciden");
       setIsLoading(false);
       return;
     }
 
     if (password.length < 8) {
-      setError("La contraseña debe tener al menos 8 caracteres");
+      toast.error("La contraseña debe tener al menos 8 caracteres");
       setIsLoading(false);
       return;
     }
@@ -97,7 +98,7 @@ export function LoginPassword({
         throw new Error(data.error || "Error al crear la cuenta");
       }
 
-      alert(data.message || "Cuenta creada exitosamente. Por favor, verifica tu correo electrónico.");
+      toast.success(data.message || "Cuenta creada exitosamente. Por favor, verifica tu correo electrónico.");
       setMode("login");
       setEmail("");
       setPassword("");
@@ -106,9 +107,9 @@ export function LoginPassword({
     } catch (error: unknown) {
       console.log("error catch", error);
       if (error instanceof Error) {
-        setError(error.message);
+        toast.error(error.message);
       } else {
-        setError("Error inesperado");
+        toast.error("Error inesperado");
       }
     } finally {
       setIsLoading(false);
@@ -174,6 +175,7 @@ export function LoginPassword({
                   type="password"
                   required
                   value={password}
+                  placeholder="**********"
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
@@ -185,6 +187,7 @@ export function LoginPassword({
                     type="password"
                     required
                     value={confirmPassword}
+                    placeholder="**********"
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                 </div>

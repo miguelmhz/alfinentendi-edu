@@ -15,7 +15,7 @@ interface Book {
   slug: { current: string };
   description?: any;
   authors?: { name: string; slug: { current: string } }[];
-  categories?: { name: string; slug: { current: string } }[];
+  categories?: { title: string; slug: { current: string } }[];
   coverImage?: {
     asset: {
       url: string;
@@ -33,7 +33,7 @@ export default function LibrosPage() {
   const { isAdmin } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
   const [filteredBooks, setFilteredBooks] = useState<Book[]>([]);
-  const [categories, setCategories] = useState<{ name: string; slug: { current: string } }[]>([]);
+  const [categories, setCategories] = useState<{ title: string; slug: { current: string } }[]>([]);
   const [authors, setAuthors] = useState<{ name: string; slug: { current: string } }[]>([]);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
@@ -60,6 +60,7 @@ export default function LibrosPage() {
       setLoading(true);
       const response = await fetch("/api/books");
       const data = await response.json();
+      console.log("Books loaded:", data);
       setBooks(data.books || []);
       setFilteredBooks(data.books || []);
     } catch (error) {

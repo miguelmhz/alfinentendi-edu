@@ -225,7 +225,7 @@ export default async function BookPage({ params }: PageProps) {
                     <div className="flex flex-wrap gap-2">
                       {book.categories.map((cat: any) => (
                         <Badge key={cat.slug.current} variant="secondary">
-                          {cat.name}
+                          {cat.title}
                         </Badge>
                       ))}
                     </div>

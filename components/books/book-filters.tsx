@@ -14,7 +14,7 @@ import {
 
 interface BookFiltersProps {
   onFilterChange: (filters: BookFilters) => void;
-  categories?: { name: string; slug: { current: string } }[];
+  categories?: { title: string; slug: { current: string } }[];
   authors?: { name: string; slug: { current: string } }[];
 }
 
@@ -98,7 +98,7 @@ export function BookFilters({ onFilterChange, categories = [], authors = [] }: B
               <SelectItem value="all">Todas las categorías</SelectItem>
               {categories.map((cat) => (
                 <SelectItem key={cat.slug.current} value={cat.slug.current}>
-                  {cat.name}
+                  {cat.title}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -47,7 +47,7 @@ export async function GET(request: Request) {
       slug,
       description,
       "authors": authors[]->{ name, slug },
-      "categories": categories[]->{ name, slug },
+      "categories": categories[]->{ title, slug },
       coverImage {
         asset-> {
           _id,
