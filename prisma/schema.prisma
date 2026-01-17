@@ -57,6 +57,9 @@ model User {
   coordinatedSchool   School?              @relation("SchoolCoordinator")
   sessions            Session[]
   studentGroups       UserGroup[]          @relation("StudentGroups")
+  subscriptions       Subscription[]       @relation("UserSubscriptions")
+  purchases           Purchase[]           @relation("UserPurchases")
+  transactions        Transaction[]        @relation("UserTransactions")
   school              School?              @relation("SchoolUsers", fields: [schoolId], references: [id])
 
   @@index([email])
@@ -410,6 +413,151 @@ enum AnnotationVisibility {
   COORDINATOR
 }
 
+model Subscription {
+  id              String             @id @default(cuid())
+  userId          String
+  planType        SubscriptionPlan
+  status          SubscriptionStatus @default(ACTIVE)
+  startDate       DateTime           @default(now())
+  endDate         DateTime
+  autoRenew       Boolean            @default(true)
+  paymentMethod   String?
+  lastPaymentDate DateTime?
+  nextBillingDate DateTime?
+  canceledAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Cascade)
+  transactions    Transaction[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([endDate])
+  @@map("subscriptions")
+}
+
+model Purchase {
+  id           String            @id @default(cuid())
+  userId       String
+  bookSanityId String
+  purchaseType PurchaseType
+  price        Float
+  currency     String            @default("USD")
+  status       PurchaseStatus    @default(COMPLETED)
+  accessGranted Boolean          @default(false)
+  expiresAt    DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  user         User              @relation("UserPurchases", fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@index([bookSanityId])
+  @@index([status])
+  @@map("purchases")
+}
+
+model Transaction {
+  id              String            @id @default(cuid())
+  userId          String
+  type            TransactionType
+  amount          Float
+  currency        String            @default("USD")
+  status          TransactionStatus @default(PENDING)
+  paymentMethod   String?
+  paymentProvider String?
+  providerId      String?
+  subscriptionId  String?
+  purchaseId      String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  purchase        Purchase?         @relation(fields: [purchaseId], references: [id])
+  subscription    Subscription?     @relation(fields: [subscriptionId], references: [id])
+  user            User              @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([providerId])
+  @@map("transactions")
+}
+
+model Promotion {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String?
+  ctaText     String?
+  ctaLink     String?
+  type        PromotionType  @default(BANNER)
+  priority    Int            @default(0)
+  startDate   DateTime       @default(now())
+  endDate     DateTime?
+  isActive    Boolean        @default(true)
+  targetRole  UserRole[]
+  discount    Float?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([isActive])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([priority])
+  @@map("promotions")
+}
+
+enum SubscriptionPlan {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  LIFETIME
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+  SUSPENDED
+  TRIAL
+}
+
+enum PurchaseType {
+  SINGLE_BOOK
+  BOOK_BUNDLE
+  SUBSCRIPTION
+}
+
+enum PurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum TransactionType {
+  SUBSCRIPTION_PAYMENT
+  BOOK_PURCHASE
+  REFUND
+  CREDIT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELED
+}
+
+enum PromotionType {
+  BANNER
+  POPUP
+  NOTIFICATION
+  EMAIL
+}
+
 enum NotificationType {
   ACCESS_GRANTED
   ACCESS_EXPIRING
@@ -422,4 +570,7 @@ enum NotificationType {
   SUBSCRIPTION_EXPIRED
   BOOK_ASSIGNED
   SYSTEM
+  PURCHASE_COMPLETED
+  PAYMENT_FAILED
+  PROMOTION
 }

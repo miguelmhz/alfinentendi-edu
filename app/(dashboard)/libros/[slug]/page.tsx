@@ -7,6 +7,7 @@ import Link from "next/link";
 import { BookCoverFallback } from "@/components/books/book-cover-fallback";
 import { BookReviews } from "@/components/books/book-reviews";
 import { BookGuides } from "@/components/books/book-guides";
+import { BookPurchaseButton } from "@/components/books/book-purchase-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -45,7 +46,7 @@ export default async function BookPage({ params }: PageProps) {
     slug,
     description,
     "authors": authors[]->{ name, slug, bio, image },
-    "categories": categories[]->{ name, slug },
+    "categories": categories[]->{ title, slug },
     coverImage {
       asset-> {
         _id,
@@ -86,6 +87,8 @@ export default async function BookPage({ params }: PageProps) {
 
   let currentUser = null;
   let isTeacher = false;
+  let hasAccess = false;
+  let isPublicUser = false;
 
   if (authUser) {
     currentUser = await prisma.user.findUnique({
@@ -96,6 +99,33 @@ export default async function BookPage({ params }: PageProps) {
     isTeacher = currentUser?.roles.some(role => 
       ["TEACHER", "COORDINATOR", "ADMIN"].includes(role)
     ) || false;
+
+    isPublicUser = currentUser?.roles.includes("PUBLIC") || false;
+
+    // Check if user has access to this book
+    if (currentUser && book._id) {
+      const bookRecord = await prisma.book.findUnique({
+        where: { sanityId: book._id },
+        select: { id: true },
+      });
+
+      if (bookRecord) {
+        const now = new Date();
+        const bookAccess = await prisma.bookAccess.findFirst({
+          where: {
+            userId: currentUser.id,
+            bookId: bookRecord.id,
+            isActive: true,
+            status: "ACTIVE",
+            endDate: { gte: now },
+          },
+        });
+
+        hasAccess = !!bookAccess || book.isPublic;
+      } else {
+        hasAccess = book.isPublic;
+      }
+    }
   }
 
   // Obtener reviews
@@ -225,7 +255,7 @@ export default async function BookPage({ params }: PageProps) {
                     <div className="flex flex-wrap gap-2">
                       {book.categories.map((cat: any) => (
                         <Badge key={cat.slug.current} variant="secondary">
-                          {cat.name}
+                          {cat.title}
                         </Badge>
                       ))}
                     </div>
@@ -245,7 +275,7 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-              {book.file?.asset?.url && (
+              {book.file?.asset?.url && hasAccess && (
                 <Button asChild>
                   <Link href={`/libros/${slug}/vista`}>
                     <BookOpen className="w-4 h-4 mr-2" />
@@ -254,14 +284,12 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-             
-              {book.purchaseLink && book.price && (
-                <Button variant="secondary" asChild>
-                  <a href={book.purchaseLink} target="_blank" rel="noopener noreferrer">
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Comprar ${book.price.toFixed(2)}
-                  </a>
-                </Button>
+              {book.file?.asset?.url && !hasAccess && isPublicUser && !book.isPublic && (
+                <BookPurchaseButton
+                  bookSlug={slug}
+                  price={book.price}
+                  subscriptionPlan="lifetime"
+                />
               )}
             </div>
           </div>

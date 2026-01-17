@@ -2,6 +2,43 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
+export async function GET(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const params = await context.params;
+    const userId = params.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Usuario no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ 
+      id: user.id,
+      name: user.name || user.email,
+    });
+  } catch (error) {
+    console.error("Error obteniendo usuario:", error);
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> }

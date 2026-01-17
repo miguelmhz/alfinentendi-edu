@@ -5,6 +5,7 @@ import { StudentDashboard } from "@/components/dashboard/student-dashboard";
 import { TeacherDashboard } from "@/components/dashboard/teacher-dashboard";
 import { CoordinatorDashboard } from "@/components/dashboard/coordinator-dashboard";
 import { AdminDashboard } from "@/components/dashboard/admin-dashboard";
+import { PublicDashboard } from "@/components/dashboard/public-dashboard";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -267,6 +268,20 @@ export default async function Home() {
             unreadNotifications,
             pendingReports,
             systemHealth: "healthy",
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (primaryRole === "PUBLIC") {
+    return (
+      <div className="container mx-auto p-6">
+        <PublicDashboard
+          user={{
+            id: user.id,
+            name: user.name,
+            email: user.email,
           }}
         />
       </div>

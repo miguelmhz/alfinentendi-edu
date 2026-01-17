@@ -13,7 +13,7 @@ export const DashboardHeader = () => {
     return <EnvVarWarning />;
   }
   return (
-    <header className="w-full flex flex-col lg:flex-row justify-center border-b border-b-foreground/10  py-4 px-7 sticky top-0 z-50 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="w-full h-[95px] flex flex-col lg:flex-row justify-center border-b border-b-foreground/10 py-4 px-7 sticky top-0 z-50 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       {/*Control de sidebar y logo*/}
       <div className="flex justify-between lg:justify-start gap-6 lg:w-[calc(331px+28px)] items-center">
         <SidebarTrigger/>

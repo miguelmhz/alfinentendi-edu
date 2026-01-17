@@ -13,7 +13,7 @@ interface BookListItemProps {
     slug: { current: string };
     description?: any;
     authors?: { name: string; slug: { current: string } }[];
-    categories?: { name: string; slug: { current: string } }[];
+    categories?: { title: string; slug: { current: string } }[];
     coverImage?: {
       asset: {
         url: string;
@@ -142,7 +142,7 @@ export function BookListItem({ book, averageRating, totalReviews }: BookListItem
           )}
           {book.categories && book.categories.slice(0, 3).map((cat) => (
             <Badge key={cat.slug.current} variant="secondary" className="text-xs">
-              {cat.name}
+              {cat.title}
             </Badge>
           ))}
         </div>

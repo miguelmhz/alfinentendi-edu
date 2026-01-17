@@ -34,9 +34,15 @@ export async function GET(request: Request) {
           return NextResponse.redirect(`${origin}/auth/login?error=user_not_found`);
         }
 
-        // Verificar que el usuario esté activo
-        if (user.status !== "ACTIVE") {
-          // Cerrar la sesión si el usuario no está activo
+        // Si el usuario es PUBLIC y está en estado INVITED, activarlo automáticamente
+        // (esto ocurre cuando verifica su email después del registro)
+        if (user.roles.includes("PUBLIC") && user.status === "INVITED") {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { status: "ACTIVE" },
+          });
+        } else if (user.status !== "ACTIVE") {
+          // Para otros roles, verificar que el usuario esté activo
           await supabase.auth.signOut();
           let errorParam = "inactive";
           if (user.status === "INVITED") {
@@ -56,13 +62,15 @@ export async function GET(request: Request) {
         // Redirigir según el rol principal
         // Nota: Como roles es un array, tomamos el primer rol o el más específico
         if (user.roles.includes("ADMIN")) {
-          return NextResponse.redirect(`${origin}/admin/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("COORDINATOR")) {
-          return NextResponse.redirect(`${origin}/coordinator/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("TEACHER")) {
-          return NextResponse.redirect(`${origin}/teacher/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("STUDENT")) {
-          return NextResponse.redirect(`${origin}/student/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
+        } else if (user.roles.includes("PUBLIC")) {
+          return NextResponse.redirect(`${origin}/`);
         }
       }
 

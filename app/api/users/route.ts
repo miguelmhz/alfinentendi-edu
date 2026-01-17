@@ -159,17 +159,66 @@ export async function POST(request: Request) {
       );
     }
 
-    const temporaryPassword = generateTemporaryPassword();
+    // Validar y convertir schoolId (puede ser ID o slug)
+    let validSchoolId: string | null = null;
+    if (schoolId) {
+      // Intentar buscar por ID primero
+      let school = await prisma.school.findUnique({
+        where: { id: schoolId },
+      });
+
+      // Si no se encuentra, intentar buscar por slug
+      if (!school) {
+        school = await prisma.school.findUnique({
+          where: { slug: schoolId },
+        });
+      }
+
+      if (!school) {
+        return NextResponse.json(
+          { error: "La escuela seleccionada no existe" },
+          { status: 400 }
+        );
+      }
+
+      validSchoolId = school.id;
+    }
+
+    // Determinar si usar magic link o contraseña temporal
+    const useMagicLink = roles.some((role: string) => 
+      ["TEACHER", "COORDINATOR", "STUDENT"].includes(role)
+    );
 
     const adminClient = createAdminClient();
-    const { data: authData, error: createError } = await adminClient.auth.admin.createUser({
-      email: email.trim(),
-      password: temporaryPassword,
-      email_confirm: true,
-      user_metadata: {
-        name: name?.trim() || null,
-      },
-    });
+    let authData;
+    let createError;
+    let temporaryPassword = "";
+
+    if (useMagicLink) {
+      // Crear usuario sin contraseña para magic link
+      const result = await adminClient.auth.admin.createUser({
+        email: email.trim(),
+        email_confirm: false, // No confirmar aún, se hará con magic link
+        user_metadata: {
+          name: name?.trim() || null,
+        },
+      });
+      authData = result.data;
+      createError = result.error;
+    } else {
+      // Crear usuario con contraseña temporal (para ADMIN, PUBLIC, etc.)
+      temporaryPassword = generateTemporaryPassword();
+      const result = await adminClient.auth.admin.createUser({
+        email: email.trim(),
+        password: temporaryPassword,
+        email_confirm: true,
+        user_metadata: {
+          name: name?.trim() || null,
+        },
+      });
+      authData = result.data;
+      createError = result.error;
+    }
 
     if (createError || !authData.user) {
       throw new Error(createError?.message || "Error al crear usuario en Supabase");
@@ -181,8 +230,8 @@ export async function POST(request: Request) {
         email: email.trim(),
         name: name?.trim() || null,
         roles: roles,
-        status: status || "INVITED",
-        schoolId: schoolId || null,
+        status: useMagicLink ? "ACTIVE" : "INVITED",
+        schoolId: validSchoolId,
         createdBy: user.id,
       },
       select: {
@@ -201,21 +250,50 @@ export async function POST(request: Request) {
       },
     });
 
-    const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-invite`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    // Enviar magic link o email con contraseña según el tipo de usuario
+    if (useMagicLink) {
+      // Generar magic link
+      const { data: linkData, error: magicLinkError } = await adminClient.auth.admin.generateLink({
+        type: 'magiclink',
         email: newUser.email,
-        name: newUser.name,
-        temporaryPassword,
-      }),
-    });
+      });
 
-    if (!emailResponse.ok) {
-      console.error("Error al enviar email de invitación");
+      if (magicLinkError || !linkData) {
+        console.error("Error generando magic link:", magicLinkError);
+      } else {
+        // Enviar email con magic link
+        const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-magic-link`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: newUser.email,
+            name: newUser.name,
+            magicLink: linkData.properties.action_link,
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error("Error enviando magic link por email");
+        }
+      }
+    } else {
+      // Enviar email con contraseña temporal
+      const emailResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL}/api/send-invite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newUser.email,
+          name: newUser.name,
+          temporaryPassword,
+        }),
+      });
+
+      if (!emailResponse.ok) {
+        console.error("Error al enviar email de invitación");
+      }
     }
 
-    return NextResponse.json({ user: newUser, temporaryPassword }, { status: 201 });
+    return NextResponse.json({ user: newUser }, { status: 201 });
   } catch (error: any) {
     console.error("Error creando usuario:", error);
     return NextResponse.json(

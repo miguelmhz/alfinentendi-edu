@@ -52,13 +52,39 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
   }
 
   // Get the Prisma book ID from the database
-  const prismaBook = await prisma.book.findUnique({
+  let prismaBook = await prisma.book.findUnique({
     where: { sanityId: book._id },
     select: { id: true }
   });
 
   if (!prismaBook) {
-    console.error("Book not found in Prisma database:", book._id);
+    console.log("Book not found in Prisma database, attempting to sync:", book._id);
+    
+    try {
+      const syncResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/books/sync-single`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sanityId: book._id }),
+      });
+
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json();
+        prismaBook = { id: syncData.book.id };
+        console.log("Book synced successfully:", syncData.book.id);
+      } else {
+        console.error("Failed to sync book:", await syncResponse.text());
+        notFound();
+      }
+    } catch (error) {
+      console.error("Error syncing book:", error);
+      notFound();
+    }
+  }
+
+  if (!prismaBook) {
+    console.error("Book not found in Prisma database after sync attempt:", book._id);
     notFound();
   }
 
@@ -86,13 +112,11 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
   const pdfUrl = `/api/books/${slug}/pdf${type === 'preview' ? '?type=preview' : ''}`;
 
   return (
-    <div className="h-screen w-full">
-      <ViewerSchemaPage 
-        pdfUrl={pdfUrl} 
-        bookTitle={book.name} 
-        userName={userName}
-        bookId={prismaBook.id}
-      />
-    </div>
+    <ViewerSchemaPage 
+      pdfUrl={pdfUrl} 
+      bookTitle={book.name} 
+      userName={userName}
+      bookId={prismaBook.id}
+    />
   );
 }
