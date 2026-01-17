@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -19,15 +19,52 @@ const routeNames: Record<string, string> = {
   'configuracion': 'Configuración',
   'perfil': 'Mi Perfil',
   'usuarios': 'Usuarios',
+  'libros': 'Libros',
+  'vista': 'Lector',
+  'mis-libros': 'Mis Libros',
   // Agrega más según necesites
 }
 
+// Regex para detectar UUIDs
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const SectionIndicator = () => {
   const pathname = usePathname()
+  const [userNames, setUserNames] = useState<Record<string, string>>({})
   
   const pathnames = pathname.split('/').filter(x => x)
   
-  const getDisplayName = (segment: string) => {
+  // Detectar y cargar nombres de usuarios
+  useEffect(() => {
+    const userIds = pathnames.filter(segment => UUID_REGEX.test(segment))
+    
+    if (userIds.length > 0) {
+      // Cargar nombres de usuarios
+      userIds.forEach(async (userId) => {
+        if (!userNames[userId]) {
+          try {
+            const response = await fetch(`/api/users/${userId}`)
+            if (response.ok) {
+              const data = await response.json()
+              setUserNames(prev => ({
+                ...prev,
+                [userId]: data.name || 'Usuario'
+              }))
+            }
+          } catch (error) {
+            console.error('Error fetching user name:', error)
+          }
+        }
+      })
+    }
+  }, [pathname])
+  
+  const getDisplayName = (segment: string, index: number) => {
+    // Si es un UUID, intentar mostrar el nombre del usuario
+    if (UUID_REGEX.test(segment)) {
+      return userNames[segment] || 'Cargando...'
+    }
+    
     // Si existe en el mapa, usar ese nombre
     if (routeNames[segment]) {
       return routeNames[segment]
@@ -52,7 +89,7 @@ const SectionIndicator = () => {
         {pathnames.map((segment, index) => {
           const routeTo = `/${pathnames.slice(0, index + 1).join('/')}`
           const isLast = index === pathnames.length - 1
-          const displayName = getDisplayName(segment)
+          const displayName = getDisplayName(segment, index)
           
           return (
             <React.Fragment key={routeTo}>
