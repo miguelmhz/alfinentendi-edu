@@ -62,13 +62,13 @@ export async function GET(request: Request) {
         // Redirigir según el rol principal
         // Nota: Como roles es un array, tomamos el primer rol o el más específico
         if (user.roles.includes("ADMIN")) {
-          return NextResponse.redirect(`${origin}/admin/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("COORDINATOR")) {
-          return NextResponse.redirect(`${origin}/coordinator/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("TEACHER")) {
-          return NextResponse.redirect(`${origin}/teacher/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("STUDENT")) {
-          return NextResponse.redirect(`${origin}/student/dashboard`);
+          return NextResponse.redirect(`${origin}/dashboard`);
         } else if (user.roles.includes("PUBLIC")) {
           return NextResponse.redirect(`${origin}/`);
         }

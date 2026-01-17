@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useState } from "react";
+import { toast } from "sonner";
 
 export function LoginMagicLink({
   className,
@@ -43,7 +44,7 @@ export function LoginMagicLink({
       }
 
       // Mostrar mensaje de éxito al usuario
-      alert(data.message || "Se ha enviado un enlace de acceso a tu correo electrónico");
+      toast.success(data.message || "Se ha enviado un enlace de acceso a tu correo electrónico");
 
       // No redirigir inmediatamente, el usuario necesita hacer clic en el enlace del email
     } catch (error: unknown) {

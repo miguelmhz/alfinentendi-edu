@@ -13,13 +13,41 @@ import Image from "next/image";
 import individualImg from "@/assets/imgs/individual.webp";
 import escuelaImg from "@/assets/imgs/escuela.webp";
 import logo from "@/assets/imgs/logo-nobg.webp";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import Beneficios from "@/components/auth/beneficios";
 
 export default function Page() {
   const [activeTab, setActiveTab] = useState<"individual" | "escuela">(
     "individual"
   );
+
+  useEffect(() => {
+    // Capturar errores del hash URL
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const error = params.get("error");
+      const errorCode = params.get("error_code");
+      const errorDescription = params.get("error_description");
+
+      if (error) {
+        let errorMessage = "Error al iniciar sesión";
+
+        // Mensajes personalizados según el código de error
+        if (errorCode === "otp_expired") {
+          errorMessage = "El enlace de verificación ha expirado. Por favor, solicita uno nuevo.";
+        } else if (errorDescription) {
+          errorMessage = decodeURIComponent(errorDescription.replace(/\+/g, " "));
+        }
+
+        toast.error(errorMessage);
+
+        // Limpiar el hash de la URL
+        window.history.replaceState(null, "", window.location.pathname);
+      }
+    }
+  }, []);
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center">

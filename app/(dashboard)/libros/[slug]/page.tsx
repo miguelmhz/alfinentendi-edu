@@ -46,7 +46,7 @@ export default async function BookPage({ params }: PageProps) {
     slug,
     description,
     "authors": authors[]->{ name, slug, bio, image },
-    "categories": categories[]->{ name, slug },
+    "categories": categories[]->{ title, slug },
     coverImage {
       asset-> {
         _id,
