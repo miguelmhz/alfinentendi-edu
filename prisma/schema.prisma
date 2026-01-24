@@ -60,6 +60,7 @@ model User {
   subscriptions       Subscription[]       @relation("UserSubscriptions")
   purchases           Purchase[]           @relation("UserPurchases")
   transactions        Transaction[]        @relation("UserTransactions")
+  readingLogs         BookReadingLog[]     @relation("UserReadingLogs")
   school              School?              @relation("SchoolUsers", fields: [schoolId], references: [id])
 
   @@index([email])
@@ -130,6 +131,7 @@ model Book {
   updatedAt      DateTime            @updatedAt
   annotations    Annotation[]
   bookAccesses   BookAccess[]
+  readingLogs    BookReadingLog[]    @relation("BookReadingLogs")
   grade          Grade?              @relation(fields: [gradeId], references: [id])
   schoolLicenses SchoolBookLicense[]
 
@@ -573,4 +575,28 @@ enum NotificationType {
   PURCHASE_COMPLETED
   PAYMENT_FAILED
   PROMOTION
+}
+
+model BookReadingLog {
+  id           String    @id @default(cuid())
+  userId       String
+  bookId       String
+  bookSanityId String
+  sessionStart DateTime  @default(now())
+  sessionEnd   DateTime?
+  duration     Int?      // Duración en segundos
+  pagesViewed  Int?      // Número de páginas vistas
+  lastPage     Int?      // Última página vista
+  deviceType   String?   // mobile, desktop, tablet
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  user User @relation("UserReadingLogs", fields: [userId], references: [id], onDelete: Cascade)
+  book Book @relation("BookReadingLogs", fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([bookSanityId])
+  @@index([sessionStart])
+  @@map("book_reading_logs")
 }

@@ -1,5 +1,5 @@
 import { client } from "@/lib/sanity/client";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ViewerSchemaPage } from "@/components/pdf-viewer/PDFViewer";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
@@ -17,14 +17,22 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
   const supabase = await createClient();
   const { data: { user: authUser } } = await supabase.auth.getUser();
   
-  let userName = "Usuario";
-  if (authUser) {
-    const user = await prisma.user.findUnique({
-      where: { email: authUser.email! },
-      select: { name: true },
-    });
-    userName = user?.name || authUser.email || "Usuario";
+  // Verificar que el usuario esté autenticado
+  if (!authUser) {
+    redirect('/auth/login');
   }
+
+  // Obtener datos completos del usuario desde Prisma
+  const user = await prisma.user.findUnique({
+    where: { email: authUser.email! },
+    select: { id: true, name: true, roles: true },
+  });
+
+  if (!user) {
+    redirect('/auth/login');
+  }
+
+  const userName = user.name || authUser.email || "Usuario";
 
   // Obtener libro desde Sanity
   const query = `*[_type == "book" && slug.current == $slug][0] {
@@ -50,6 +58,11 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
   if (!book) {
     notFound();
   }
+
+  // Verificar acceso del usuario al libro
+  const isTeacher = user.roles.some(role => 
+    ["TEACHER", "COORDINATOR", "ADMIN"].includes(role)
+  );
 
   // Get the Prisma book ID from the database
   let prismaBook = await prisma.book.findUnique({
@@ -88,6 +101,32 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
     notFound();
   }
 
+  // Verificar acceso solo si se solicita el libro completo (no para preview)
+  if (type === 'full') {
+    const now = new Date();
+    const bookAccess = await prisma.bookAccess.findFirst({
+      where: {
+        userId: user.id,
+        bookId: prismaBook.id,
+        isActive: true,
+        status: "ACTIVE",
+        endDate: { gte: now },
+      },
+    });
+
+    // Permitir acceso si:
+    // - El libro es público
+    // - El usuario tiene acceso activo (BookAccess)
+    // - El usuario es profesor/coordinador/admin
+    const hasAccess = book.isPublic || !!bookAccess || isTeacher;
+
+    if (!hasAccess) {
+      console.log("Access denied for user:", user.id, "to book:", prismaBook.id);
+      redirect(`/libros/${slug}`);
+    }
+  }
+  // Para type=preview, permitir acceso a todos los usuarios autenticados
+
   // Verificar que el archivo existe
   const hasFile = type === 'preview' 
     ? book.preview?.asset?.url 
@@ -117,6 +156,7 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
       bookTitle={book.name} 
       userName={userName}
       bookId={prismaBook.id}
+      bookSanityId={book._id}
     />
   );
 }

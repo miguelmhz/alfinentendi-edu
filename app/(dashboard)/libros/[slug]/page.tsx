@@ -121,9 +121,9 @@ export default async function BookPage({ params }: PageProps) {
           },
         });
 
-        hasAccess = !!bookAccess || book.isPublic;
+        hasAccess = !!bookAccess;
       } else {
-        hasAccess = book.isPublic;
+        hasAccess = false;
       }
     }
   }
@@ -152,6 +152,16 @@ export default async function BookPage({ params }: PageProps) {
   const userReview = currentUser
     ? reviewsData.find((r) => r.userId === currentUser.id)
     : undefined;
+
+  // Debug: verificar condiciones para mostrar botón
+  console.log("Debug - Botón Obtener Gratis:", {
+    hasFile: !!book.file?.asset?.url,
+    hasPreview: !!book.preview?.asset?.url,
+    hasAccess,
+    hasCurrentUser: !!currentUser,
+    isPublic: book.isPublic,
+    shouldShowButton: (book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && currentUser && book.isPublic,
+  });
 
   // Obtener guías si es profesor
   let guides = [];
@@ -275,7 +285,7 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-              {book.file?.asset?.url && hasAccess && (
+              {(book.file?.asset?.url || book.preview?.asset?.url) && hasAccess && (
                 <Button asChild>
                   <Link href={`/libros/${slug}/vista`}>
                     <BookOpen className="w-4 h-4 mr-2" />
@@ -284,7 +294,16 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-              {book.file?.asset?.url && !hasAccess && isPublicUser && !book.isPublic && (
+              {(book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && currentUser && book.isPublic && (
+                <BookPurchaseButton
+                  bookSlug={slug}
+                  price={0}
+                  subscriptionPlan="lifetime"
+                  isFree={true}
+                />
+              )}
+
+              {(book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && currentUser && !book.isPublic && (
                 <BookPurchaseButton
                   bookSlug={slug}
                   price={book.price}

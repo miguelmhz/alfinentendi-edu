@@ -97,6 +97,7 @@ import { SchemaSelectionMenu } from "./ui/schema-selection-menu";
 import { LinkLayer } from "./components/LinkLayer";
 import { englishLocale, spanishLocale } from "./config/locale";
 import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
+import { useReadingLog } from "./hooks/useReadingLog";
 import "./styles/toolbar-animations.css";
 
 const logger = new ConsoleLogger();
@@ -106,6 +107,7 @@ interface ViewerSchemaPageProps {
   bookTitle?: string;
   userName?: string;
   bookId?: string;
+  bookSanityId?: string;
 }
 
 /**
@@ -127,6 +129,7 @@ export function ViewerSchemaPage({
   bookTitle,
   userName = "Usuario",
   bookId,
+  bookSanityId,
 }: ViewerSchemaPageProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { engine, isLoading, error } = usePdfiumEngine({
@@ -134,6 +137,13 @@ export function ViewerSchemaPage({
   });
   const [totalPages, setTotalPages] = useState(1);
   const [links, setLinks] = useState<PdfLinkAnnoObject[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Hook para trackear lectura del libro
+  const { setCurrentPage: updateCurrentPage, setPagesViewed } = useReadingLog({
+    bookSanityId: bookSanityId || "",
+    enabled: !!bookSanityId,
+  });
 
 
   // We don't need to track document ID separately
@@ -163,6 +173,9 @@ export function ViewerSchemaPage({
 
       // Guardar el total de páginas
       setTotalPages(document.pageCount);
+      
+      // Actualizar páginas vistas para el log
+      setPagesViewed(document.pageCount);
 
       // Obtener links de TODAS las páginas
       const allLinks: PdfLinkAnnoObject[] = [];
