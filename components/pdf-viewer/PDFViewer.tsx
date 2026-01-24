@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmbedPDF } from "@embedpdf/core/react";
 import { usePdfiumEngine } from "@embedpdf/engines/react";
 import { createPluginRegistration } from "@embedpdf/core";
@@ -98,6 +98,7 @@ import { LinkLayer } from "./components/LinkLayer";
 import { englishLocale, spanishLocale } from "./config/locale";
 import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
 import { useReadingLog } from "./hooks/useReadingLog";
+import { useBookProgress } from "./hooks/useBookProgress";
 import "./styles/toolbar-animations.css";
 
 const logger = new ConsoleLogger();
@@ -108,6 +109,7 @@ interface ViewerSchemaPageProps {
   userName?: string;
   bookId?: string;
   bookSanityId?: string;
+  userId?: string;
 }
 
 /**
@@ -130,6 +132,7 @@ export function ViewerSchemaPage({
   userName = "Usuario",
   bookId,
   bookSanityId,
+  userId,
 }: ViewerSchemaPageProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { engine, isLoading, error } = usePdfiumEngine({
@@ -143,6 +146,13 @@ export function ViewerSchemaPage({
   const { setCurrentPage: updateCurrentPage, setPagesViewed } = useReadingLog({
     bookSanityId: bookSanityId || "",
     enabled: !!bookSanityId,
+  });
+
+  // Hook para progreso de lectura (offline-first)
+  const { lastPage, updateProgress, isLoading: isLoadingProgress } = useBookProgress({
+    bookSanityId: bookSanityId || "",
+    userId,
+    enabled: !!bookSanityId && !!userId,
   });
 
 
@@ -205,6 +215,80 @@ export function ViewerSchemaPage({
     if (!engine) return;
     getLinks();
   }, [engine]);
+
+  // Actualizar progreso cuando cambia la página (solo para reading log)
+  useEffect(() => {
+    if (!allowProgressUpdatesRef.current) {
+      return;
+    }
+
+    if (currentPage > 0 && totalPages > 0) {
+      // Actualizar reading log
+      updateCurrentPage(currentPage);
+      
+      // Actualizar progreso (offline-first)
+      updateProgress(currentPage, totalPages);
+    }
+  }, [currentPage, totalPages, updateCurrentPage, updateProgress]);
+
+  // Ref para guardar el registry y scroll plugin
+  const scrollPluginRef = useRef<any>(null);
+  const hasNavigatedRef = useRef(false);
+  const allowProgressUpdatesRef = useRef(false);
+  const [scrollReady, setScrollReady] = useState(false);
+
+  // Callback cuando el visor está listo
+  const handleInitialized = useCallback(async (registry: any) => {
+    const scroll = registry.getPlugin('scroll')?.provides();
+    
+    if (!scroll) return;
+
+    // Guardar referencia al scroll plugin
+    scrollPluginRef.current = scroll;
+    setScrollReady(true);
+
+    // 1. Escuchar cambios de página en tiempo real
+    scroll.onPageChange((event: any) => {
+      const { pageNumber, totalPages: total } = event;
+      
+      // Actualizar estado local
+      setCurrentPage(pageNumber);
+      setTotalPages(total);
+      
+      console.log(`📄 Page changed: ${pageNumber} of ${total}`);
+    });
+  }, []);
+
+  // 2. Navegar a última página cuando lastPage esté disponible
+  useEffect(() => {
+    if (!scrollPluginRef.current || !scrollReady) {
+      return;
+    }
+
+    if (hasNavigatedRef.current || lastPage <= 1 || isLoadingProgress) {
+      return;
+    }
+
+    // Esperar un momento para que el layout esté completamente listo
+    const timer = setTimeout(() => {
+      scrollPluginRef.current?.scrollToPage({ 
+        pageNumber: lastPage, 
+        behavior: 'instant' 
+      });
+      hasNavigatedRef.current = true;
+      allowProgressUpdatesRef.current = true;
+      console.log(`🎯 Navigated to saved page: ${lastPage}`);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [lastPage, isLoadingProgress, scrollReady]);
+
+  // Si no hay página guardada, habilitar actualizaciones en cuanto cargue
+  useEffect(() => {
+    if (!isLoadingProgress && lastPage <= 1 && scrollReady) {
+      allowProgressUpdatesRef.current = true;
+    }
+  }, [isLoadingProgress, lastPage, scrollReady]);
 
 
 
@@ -275,7 +359,7 @@ export function ViewerSchemaPage({
       createPluginRegistration(AnnotationPluginPackage, {
         annotationAuthor: userName,
         selectAfterCreate: false,
-        deactivateToolAfterCreate: true,
+        deactivateToolAfterCreate: false,
       }),
       createPluginRegistration(FullscreenPluginPackage),
       createPluginRegistration(ThumbnailPluginPackage, {
@@ -314,7 +398,12 @@ export function ViewerSchemaPage({
         ref={containerRef}
       >
         <div className="flex flex-1 select-none flex-col overflow-hidden">
-          <EmbedPDF engine={engine} logger={logger} plugins={plugins}>
+          <EmbedPDF 
+            engine={engine} 
+            logger={logger} 
+            plugins={plugins}
+            onInitialized={handleInitialized}
+          >
             {({ pluginsReady, activeDocumentId, documentStates }) => (
               <>
                 {pluginsReady ? (

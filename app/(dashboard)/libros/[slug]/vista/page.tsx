@@ -157,6 +157,7 @@ export default async function BookViewerPage({ params, searchParams }: PageProps
       userName={userName}
       bookId={prismaBook.id}
       bookSanityId={book._id}
+      userId={user.id}
     />
   );
 }
