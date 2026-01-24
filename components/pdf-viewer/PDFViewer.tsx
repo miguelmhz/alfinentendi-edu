@@ -93,6 +93,7 @@ import { SearchSidebar } from "./components/search-sidebar";
 import { OutlineSidebar } from "./components/outline-sidebar";
 import { CommentSidebarWrapper, BookIdContext } from "./components/comment-sidebar-wrapper";
 import { AnnotationPropertiesSidebar } from "./components/annotation-properties-sidebar";
+import { AnnotationToggleButton } from "./components/AnnotationToggleButton";
 import { SchemaSelectionMenu } from "./ui/schema-selection-menu";
 import { LinkLayer } from "./components/LinkLayer";
 import { englishLocale, spanishLocale } from "./config/locale";
@@ -236,6 +237,7 @@ export function ViewerSchemaPage({
   const hasNavigatedRef = useRef(false);
   const allowProgressUpdatesRef = useRef(false);
   const [scrollReady, setScrollReady] = useState(false);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
 
   // Callback cuando el visor está listo
   const handleInitialized = useCallback(async (registry: any) => {
@@ -278,6 +280,11 @@ export function ViewerSchemaPage({
       hasNavigatedRef.current = true;
       allowProgressUpdatesRef.current = true;
       console.log(`🎯 Navigated to saved page: ${lastPage}`);
+      
+      // Marcar carga inicial como completa después de navegar
+      setTimeout(() => {
+        setIsInitialLoadComplete(true);
+      }, 300);
     }, 500);
 
     return () => clearTimeout(timer);
@@ -287,6 +294,10 @@ export function ViewerSchemaPage({
   useEffect(() => {
     if (!isLoadingProgress && lastPage <= 1 && scrollReady) {
       allowProgressUpdatesRef.current = true;
+      // Marcar carga inicial como completa si no hay navegación pendiente
+      setTimeout(() => {
+        setIsInitialLoadComplete(true);
+      }, 800);
     }
   }, [isLoadingProgress, lastPage, scrollReady]);
 
@@ -303,6 +314,7 @@ export function ViewerSchemaPage({
       "outline-sidebar": OutlineSidebar,
       "comment-sidebar": CommentSidebarWrapper,
       "annotation-properties-sidebar": AnnotationPropertiesSidebar,
+      "annotation-toggle-button": AnnotationToggleButton,
     }),
     []
   );
@@ -390,6 +402,9 @@ export function ViewerSchemaPage({
     );
   }
 
+  // Mostrar loading mientras se carga el progreso y se navega a la última página
+  const showInitialLoading = isLoadingProgress || !isInitialLoadComplete;
+
 
   return (
     <BookIdContext.Provider value={bookId}>
@@ -407,7 +422,18 @@ export function ViewerSchemaPage({
             {({ pluginsReady, activeDocumentId, documentStates }) => (
               <>
                 {pluginsReady ? (
-                  <div className="flex h-full flex-col">
+                  <div className="flex h-full flex-col relative">
+                    {/* Loading overlay mientras carga progreso y navega */}
+                    {showInitialLoading && (
+                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-4">
+                          <LoadingSpinner />
+                          <p className="text-sm text-muted-foreground">
+                            {isLoadingProgress ? 'Cargando progreso...' : 'Preparando libro...'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {/* <TabBar documentStates={documentStates} activeDocumentId={activeDocumentId} /> */}
 
                     {/* Schema-driven UI with UIProvider */}
@@ -558,11 +584,13 @@ function ViewerLayout({
                                     pageIndex={pageIndex}
                                     selectionMenu={redactionMenu}
                                   />
-                                  <AnnotationLayer
-                                    documentId={documentId}
-                                    pageIndex={pageIndex}
-                                    selectionMenu={annotationMenu}
-                                  />
+                                  <div data-annotation-layer="true">
+                                    <AnnotationLayer
+                                      documentId={documentId}
+                                      pageIndex={pageIndex}
+                                      selectionMenu={annotationMenu}
+                                    />
+                                  </div>
                                 </PagePointerProvider>
                               </Rotate>
                             )}
