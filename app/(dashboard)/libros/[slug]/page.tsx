@@ -330,7 +330,22 @@ export default async function BookPage({ params }: PageProps) {
 
               {book.authors && book.authors.length > 0 && (
                 <p className="text-lg text-gray-600 mb-4">
-                  Por {book.authors.map((a: any) => a.name).join(", ")}
+                  Por{" "}
+                  {book.authors.map((a: any, i: number) => (
+                    <span key={a.slug?.current || i}>
+                      {i > 0 && ", "}
+                      {a.slug?.current ? (
+                        <Link
+                          href={`/autores/${a.slug.current}`}
+                          className="hover:underline underline-offset-4"
+                        >
+                          {a.name}
+                        </Link>
+                      ) : (
+                        a.name
+                      )}
+                    </span>
+                  ))}
                 </p>
               )}
 

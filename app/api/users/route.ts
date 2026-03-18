@@ -26,10 +26,13 @@ export async function GET(request: Request) {
 
     const user = await prisma.user.findUnique({
       where: { email: authUser.email! },
-      select: { roles: true },
+      select: { roles: true, schoolId: true },
     });
 
-    if (!user?.roles.includes("ADMIN")) {
+    const isAdmin = user?.roles.includes("ADMIN");
+    const isCoordinator = user?.roles.includes("COORDINATOR");
+
+    if (!isAdmin && !isCoordinator) {
       return NextResponse.json(
         { error: "No tienes permisos para acceder a este recurso" },
         { status: 403 }
@@ -43,6 +46,11 @@ export async function GET(request: Request) {
     const whereClause: any = role
       ? { roles: { has: role as any } }
       : {};
+
+    // Coordinadores solo ven usuarios de su escuela
+    if (isCoordinator && !isAdmin) {
+      whereClause.schoolId = user?.schoolId ?? undefined;
+    }
 
     // Si no se incluyen eliminados, filtrar por deletedAt null
     if (!includeDeleted) {
