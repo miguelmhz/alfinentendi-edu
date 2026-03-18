@@ -10,6 +10,7 @@ interface BookPurchaseButtonProps {
   price?: number;
   subscriptionPlan?: "monthly" | "quarterly" | "annual" | "lifetime";
   couponCode?: string;
+  isFree?: boolean;
 }
 
 export function BookPurchaseButton({
@@ -17,6 +18,7 @@ export function BookPurchaseButton({
   price,
   subscriptionPlan = "lifetime",
   couponCode,
+  isFree = false,
 }: BookPurchaseButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +26,10 @@ export function BookPurchaseButton({
     setLoading(true);
 
     try {
-      const response = await fetch("/api/checkout", {
+      // Si es gratis, usar endpoint diferente
+      const endpoint = isFree || price === 0 ? "/api/books/claim-free" : "/api/checkout";
+      
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -41,10 +46,16 @@ export function BookPurchaseButton({
         return;
       }
 
-      const { url } = await response.json();
+      const data = await response.json();
       
-      if (url) {
-        window.location.href = url;
+      // Si es gratis, mostrar mensaje de éxito y redirigir a la vista del libro
+      if (isFree || price === 0) {
+        toast.success(data.message || "¡Libro obtenido exitosamente!");
+        setTimeout(() => {
+          window.location.href = `/libros/${bookSlug}/vista`;
+        }, 1000);
+      } else if (data.url) {
+        window.location.href = data.url;
       } else {
         toast.error("Error al crear la sesión de pago");
         setLoading(false);
@@ -56,6 +67,8 @@ export function BookPurchaseButton({
     }
   };
 
+  const buttonText = isFree || price === 0 ? "Obtener Gratis" : `Adquirir ${price ? `$${price.toFixed(2)}` : ""}`;
+
   return (
     <Button onClick={handlePurchase} disabled={loading}>
       {loading ? (
@@ -66,7 +79,7 @@ export function BookPurchaseButton({
       ) : (
         <>
           <ShoppingCart className="w-4 h-4 mr-2" />
-          Adquirir {price ? `$${price.toFixed(2)}` : ""}
+          {buttonText}
         </>
       )}
     </Button>

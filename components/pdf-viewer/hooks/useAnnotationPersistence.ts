@@ -74,24 +74,34 @@ export function useAnnotationPersistence({
             continue;
           }
           
-          // Track the DB ID BEFORE creating to prevent re-saving
-          annotationDbIdMap.current.set(dbAnnotation.id, dbAnnotation.id);
+          // Preparar datos de ink si existen
+          const inkData = dbAnnotation.inkPaths;
           
+          // Crear la anotación en el visor
           annotation?.createAnnotation(dbAnnotation.pageIndex, {
             id: dbAnnotation.id,
             type: annotationType,
             color: dbAnnotation.color || undefined,
-            opacity: dbAnnotation.opacity ?? undefined,
-            blendMode: dbAnnotation.blendMode ? parseInt(dbAnnotation.blendMode) : undefined,
-            strokeWidth: dbAnnotation.strokeWidth ?? undefined,
+            opacity: dbAnnotation.opacity !== null && dbAnnotation.opacity !== undefined 
+              ? Number(dbAnnotation.opacity) 
+              : undefined,
+            blendMode: dbAnnotation.blendMode !== null && dbAnnotation.blendMode !== undefined
+              ? Number(dbAnnotation.blendMode)
+              : undefined,
+            strokeWidth: dbAnnotation.strokeWidth !== null && dbAnnotation.strokeWidth !== undefined
+              ? Number(dbAnnotation.strokeWidth)
+              : undefined,
             rect: dbAnnotation.rect,
             segmentRects: dbAnnotation.segmentRects || undefined,
-            inkPaths: dbAnnotation.inkPaths || undefined,
-            inkList: dbAnnotation.inkPaths || undefined,
+            inkList: inkData || undefined,
             lineCoordinates: dbAnnotation.lineCoordinates || undefined,
             vertices: dbAnnotation.vertices || undefined,
             custom: dbAnnotation.customData || undefined,
           } as any);
+          
+          // Track the DB ID - EmbedPDF usa el ID que le pasamos
+          annotationDbIdMap.current.set(dbAnnotation.id, dbAnnotation.id);
+          console.log(`📌 Mapped annotation ${dbAnnotation.id} -> DB ${dbAnnotation.id}`);
         }
         
         console.log("🎉 All annotations loaded successfully!");

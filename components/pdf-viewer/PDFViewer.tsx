@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmbedPDF } from "@embedpdf/core/react";
 import { usePdfiumEngine } from "@embedpdf/engines/react";
 import { createPluginRegistration } from "@embedpdf/core";
@@ -93,10 +93,13 @@ import { SearchSidebar } from "./components/search-sidebar";
 import { OutlineSidebar } from "./components/outline-sidebar";
 import { CommentSidebarWrapper, BookIdContext } from "./components/comment-sidebar-wrapper";
 import { AnnotationPropertiesSidebar } from "./components/annotation-properties-sidebar";
+import { AnnotationToggleButton } from "./components/AnnotationToggleButton";
 import { SchemaSelectionMenu } from "./ui/schema-selection-menu";
 import { LinkLayer } from "./components/LinkLayer";
 import { englishLocale, spanishLocale } from "./config/locale";
 import { useAnnotationPersistence } from "./hooks/useAnnotationPersistence";
+import { useReadingLog } from "./hooks/useReadingLog";
+import { useBookProgress } from "./hooks/useBookProgress";
 import "./styles/toolbar-animations.css";
 
 const logger = new ConsoleLogger();
@@ -106,6 +109,8 @@ interface ViewerSchemaPageProps {
   bookTitle?: string;
   userName?: string;
   bookId?: string;
+  bookSanityId?: string;
+  userId?: string;
 }
 
 /**
@@ -127,6 +132,8 @@ export function ViewerSchemaPage({
   bookTitle,
   userName = "Usuario",
   bookId,
+  bookSanityId,
+  userId,
 }: ViewerSchemaPageProps = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { engine, isLoading, error } = usePdfiumEngine({
@@ -134,6 +141,20 @@ export function ViewerSchemaPage({
   });
   const [totalPages, setTotalPages] = useState(1);
   const [links, setLinks] = useState<PdfLinkAnnoObject[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Hook para trackear lectura del libro
+  const { setCurrentPage: updateCurrentPage, setPagesViewed } = useReadingLog({
+    bookSanityId: bookSanityId || "",
+    enabled: !!bookSanityId,
+  });
+
+  // Hook para progreso de lectura (offline-first)
+  const { lastPage, updateProgress, isLoading: isLoadingProgress } = useBookProgress({
+    bookSanityId: bookSanityId || "",
+    userId,
+    enabled: !!bookSanityId && !!userId,
+  });
 
 
   // We don't need to track document ID separately
@@ -163,6 +184,9 @@ export function ViewerSchemaPage({
 
       // Guardar el total de páginas
       setTotalPages(document.pageCount);
+      
+      // Actualizar páginas vistas para el log
+      setPagesViewed(document.pageCount);
 
       // Obtener links de TODAS las páginas
       const allLinks: PdfLinkAnnoObject[] = [];
@@ -193,6 +217,90 @@ export function ViewerSchemaPage({
     getLinks();
   }, [engine]);
 
+  // Actualizar progreso cuando cambia la página (solo para reading log)
+  useEffect(() => {
+    if (!allowProgressUpdatesRef.current) {
+      return;
+    }
+
+    if (currentPage > 0 && totalPages > 0) {
+      // Actualizar reading log
+      updateCurrentPage(currentPage);
+      
+      // Actualizar progreso (offline-first)
+      updateProgress(currentPage, totalPages);
+    }
+  }, [currentPage, totalPages, updateCurrentPage, updateProgress]);
+
+  // Ref para guardar el registry y scroll plugin
+  const scrollPluginRef = useRef<any>(null);
+  const hasNavigatedRef = useRef(false);
+  const allowProgressUpdatesRef = useRef(false);
+  const [scrollReady, setScrollReady] = useState(false);
+  const [isInitialLoadComplete, setIsInitialLoadComplete] = useState(false);
+
+  // Callback cuando el visor está listo
+  const handleInitialized = useCallback(async (registry: any) => {
+    const scroll = registry.getPlugin('scroll')?.provides();
+    
+    if (!scroll) return;
+
+    // Guardar referencia al scroll plugin
+    scrollPluginRef.current = scroll;
+    setScrollReady(true);
+
+    // 1. Escuchar cambios de página en tiempo real
+    scroll.onPageChange((event: any) => {
+      const { pageNumber, totalPages: total } = event;
+      
+      // Actualizar estado local
+      setCurrentPage(pageNumber);
+      setTotalPages(total);
+      
+      console.log(`📄 Page changed: ${pageNumber} of ${total}`);
+    });
+  }, []);
+
+  // 2. Navegar a última página cuando lastPage esté disponible
+  useEffect(() => {
+    if (!scrollPluginRef.current || !scrollReady) {
+      return;
+    }
+
+    if (hasNavigatedRef.current || lastPage <= 1 || isLoadingProgress) {
+      return;
+    }
+
+    // Esperar un momento para que el layout esté completamente listo
+    const timer = setTimeout(() => {
+      scrollPluginRef.current?.scrollToPage({ 
+        pageNumber: lastPage, 
+        behavior: 'instant' 
+      });
+      hasNavigatedRef.current = true;
+      allowProgressUpdatesRef.current = true;
+      console.log(`🎯 Navigated to saved page: ${lastPage}`);
+      
+      // Marcar carga inicial como completa después de navegar
+      setTimeout(() => {
+        setIsInitialLoadComplete(true);
+      }, 300);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [lastPage, isLoadingProgress, scrollReady]);
+
+  // Si no hay página guardada, habilitar actualizaciones en cuanto cargue
+  useEffect(() => {
+    if (!isLoadingProgress && lastPage <= 1 && scrollReady) {
+      allowProgressUpdatesRef.current = true;
+      // Marcar carga inicial como completa si no hay navegación pendiente
+      setTimeout(() => {
+        setIsInitialLoadComplete(true);
+      }, 800);
+    }
+  }, [isLoadingProgress, lastPage, scrollReady]);
+
 
 
   
@@ -206,6 +314,7 @@ export function ViewerSchemaPage({
       "outline-sidebar": OutlineSidebar,
       "comment-sidebar": CommentSidebarWrapper,
       "annotation-properties-sidebar": AnnotationPropertiesSidebar,
+      "annotation-toggle-button": AnnotationToggleButton,
     }),
     []
   );
@@ -262,7 +371,7 @@ export function ViewerSchemaPage({
       createPluginRegistration(AnnotationPluginPackage, {
         annotationAuthor: userName,
         selectAfterCreate: false,
-        deactivateToolAfterCreate: true,
+        deactivateToolAfterCreate: false,
       }),
       createPluginRegistration(FullscreenPluginPackage),
       createPluginRegistration(ThumbnailPluginPackage, {
@@ -293,6 +402,9 @@ export function ViewerSchemaPage({
     );
   }
 
+  // Mostrar loading mientras se carga el progreso y se navega a la última página
+  const showInitialLoading = isLoadingProgress || !isInitialLoadComplete;
+
 
   return (
     <BookIdContext.Provider value={bookId}>
@@ -301,11 +413,27 @@ export function ViewerSchemaPage({
         ref={containerRef}
       >
         <div className="flex flex-1 select-none flex-col overflow-hidden">
-          <EmbedPDF engine={engine} logger={logger} plugins={plugins}>
+          <EmbedPDF 
+            engine={engine} 
+            logger={logger} 
+            plugins={plugins}
+            onInitialized={handleInitialized}
+          >
             {({ pluginsReady, activeDocumentId, documentStates }) => (
               <>
                 {pluginsReady ? (
-                  <div className="flex h-full flex-col">
+                  <div className="flex h-full flex-col relative">
+                    {/* Loading overlay mientras carga progreso y navega */}
+                    {showInitialLoading && (
+                      <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+                        <div className="flex flex-col items-center gap-4">
+                          <LoadingSpinner />
+                          <p className="text-sm text-muted-foreground">
+                            {isLoadingProgress ? 'Cargando progreso...' : 'Preparando libro...'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                     {/* <TabBar documentStates={documentStates} activeDocumentId={activeDocumentId} /> */}
 
                     {/* Schema-driven UI with UIProvider */}
@@ -456,11 +584,13 @@ function ViewerLayout({
                                     pageIndex={pageIndex}
                                     selectionMenu={redactionMenu}
                                   />
-                                  <AnnotationLayer
-                                    documentId={documentId}
-                                    pageIndex={pageIndex}
-                                    selectionMenu={annotationMenu}
-                                  />
+                                  <div data-annotation-layer="true">
+                                    <AnnotationLayer
+                                      documentId={documentId}
+                                      pageIndex={pageIndex}
+                                      selectionMenu={annotationMenu}
+                                    />
+                                  </div>
                                 </PagePointerProvider>
                               </Rotate>
                             )}

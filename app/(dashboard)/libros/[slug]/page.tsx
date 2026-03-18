@@ -8,6 +8,7 @@ import { BookCoverFallback } from "@/components/books/book-cover-fallback";
 import { BookReviews } from "@/components/books/book-reviews";
 import { BookGuides } from "@/components/books/book-guides";
 import { BookPurchaseButton } from "@/components/books/book-purchase-button";
+import { BookStats } from "@/components/books/book-stats";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -89,6 +90,7 @@ export default async function BookPage({ params }: PageProps) {
   let isTeacher = false;
   let hasAccess = false;
   let isPublicUser = false;
+  let isAdmin = false;
 
   if (authUser) {
     currentUser = await prisma.user.findUnique({
@@ -99,6 +101,8 @@ export default async function BookPage({ params }: PageProps) {
     isTeacher = currentUser?.roles.some(role => 
       ["TEACHER", "COORDINATOR", "ADMIN"].includes(role)
     ) || false;
+
+    isAdmin = currentUser?.roles.includes("ADMIN") || false;
 
     isPublicUser = currentUser?.roles.includes("PUBLIC") || false;
 
@@ -121,9 +125,9 @@ export default async function BookPage({ params }: PageProps) {
           },
         });
 
-        hasAccess = !!bookAccess || book.isPublic;
+        hasAccess = !!bookAccess;
       } else {
-        hasAccess = book.isPublic;
+        hasAccess = false;
       }
     }
   }
@@ -152,6 +156,128 @@ export default async function BookPage({ params }: PageProps) {
   const userReview = currentUser
     ? reviewsData.find((r) => r.userId === currentUser.id)
     : undefined;
+
+  // Debug: verificar condiciones para mostrar botón
+  console.log("Debug - Botón Obtener Gratis:", {
+    hasFile: !!book.file?.asset?.url,
+    hasPreview: !!book.preview?.asset?.url,
+    hasAccess,
+    hasCurrentUser: !!currentUser,
+    isPublic: book.isPublic,
+    shouldShowButton: (book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && currentUser && book.isPublic,
+  });
+
+  // Obtener estadísticas si es admin
+  let bookStats = null;
+  let bookRecord = null;
+  
+  if (isAdmin && book._id) {
+    bookRecord = await prisma.book.findUnique({
+      where: { sanityId: book._id },
+      select: { id: true },
+    });
+
+    if (bookRecord) {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Total de usuarios con acceso
+      const totalUsers = await prisma.bookAccess.count({
+        where: {
+          bookId: bookRecord.id,
+          isActive: true,
+          status: "ACTIVE",
+        },
+      });
+
+      // Usuarios activos (últimos 30 días)
+      const activeUsers = await prisma.bookAccess.count({
+        where: {
+          bookId: bookRecord.id,
+          isActive: true,
+          status: "ACTIVE",
+          updatedAt: { gte: thirtyDaysAgo },
+        },
+      });
+
+      // Sesiones de lectura
+      const readingSessions = await prisma.bookReadingLog.aggregate({
+        where: {
+          bookId: bookRecord.id,
+          createdAt: { gte: thirtyDaysAgo },
+        },
+        _count: { id: true },
+        _avg: { duration: true },
+        _sum: { pagesViewed: true },
+      });
+
+      // Último acceso
+      const lastAccess = await prisma.bookReadingLog.findFirst({
+        where: { bookId: bookRecord.id },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+
+      // Usuarios que completaron el libro (basado en lastPage >= totalPages * 0.9)
+      // Asumimos que el libro tiene 200 páginas como promedio para este cálculo
+      const totalPagesEstimate = 200;
+      const completedUsers = await prisma.bookReadingLog.groupBy({
+        by: ['userId'],
+        where: {
+          bookId: bookRecord.id,
+          lastPage: { gte: Math.floor(totalPagesEstimate * 0.9) },
+        },
+        _count: { userId: true },
+      });
+
+      // Estadísticas de ventas
+      const salesStats = await prisma.purchase.aggregate({
+        where: {
+          bookSanityId: book._id,
+          status: "COMPLETED",
+        },
+        _count: { id: true },
+        _sum: { price: true },
+      });
+
+      // Usuarios únicos que compraron
+      const uniqueBuyers = await prisma.purchase.groupBy({
+        by: ['userId'],
+        where: {
+          bookSanityId: book._id,
+          status: "COMPLETED",
+        },
+        _count: { userId: true },
+      });
+
+      // Ventas recientes (últimos 6 meses)
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const recentSales = await prisma.purchase.count({
+        where: {
+          bookSanityId: book._id,
+          status: "COMPLETED",
+          createdAt: { gte: sixMonthsAgo },
+        },
+      });
+
+      bookStats = {
+        totalUsers,
+        activeUsers,
+        totalReadingSessions: readingSessions._count.id || 0,
+        averageReadingTime: (readingSessions._avg.duration || 0) / 60, // Convertir a minutos
+        totalPagesRead: readingSessions._sum.pagesViewed || 0,
+        completionRate: totalUsers > 0 ? (completedUsers.length / totalUsers) * 100 : 0,
+        lastAccessed: lastAccess?.createdAt?.toISOString() || null,
+        // Estadísticas de ventas
+        totalSales: salesStats._count.id || 0,
+        totalRevenue: salesStats._sum.price || 0,
+        uniqueBuyers: uniqueBuyers.length,
+        recentSales: recentSales,
+      };
+    }
+  }
 
   // Obtener guías si es profesor
   let guides = [];
@@ -204,7 +330,22 @@ export default async function BookPage({ params }: PageProps) {
 
               {book.authors && book.authors.length > 0 && (
                 <p className="text-lg text-gray-600 mb-4">
-                  Por {book.authors.map((a: any) => a.name).join(", ")}
+                  Por{" "}
+                  {book.authors.map((a: any, i: number) => (
+                    <span key={a.slug?.current || i}>
+                      {i > 0 && ", "}
+                      {a.slug?.current ? (
+                        <Link
+                          href={`/autores/${a.slug.current}`}
+                          className="hover:underline underline-offset-4"
+                        >
+                          {a.name}
+                        </Link>
+                      ) : (
+                        a.name
+                      )}
+                    </span>
+                  ))}
                 </p>
               )}
 
@@ -275,16 +416,30 @@ export default async function BookPage({ params }: PageProps) {
                 </Button>
               )}
 
-              {book.file?.asset?.url && hasAccess && (
+              {(book.file?.asset?.url || book.preview?.asset?.url) && (hasAccess || isAdmin) && (
                 <Button asChild>
                   <Link href={`/libros/${slug}/vista`}>
                     <BookOpen className="w-4 h-4 mr-2" />
                     Leer Libro
+                    {isAdmin && (
+                      <Badge variant="secondary" className="ml-2 text-xs">
+                        Admin
+                      </Badge>
+                    )}
                   </Link>
                 </Button>
               )}
 
-              {book.file?.asset?.url && !hasAccess && isPublicUser && !book.isPublic && (
+              {(book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && !isAdmin && currentUser && book.isPublic && (
+                <BookPurchaseButton
+                  bookSlug={slug}
+                  price={0}
+                  subscriptionPlan="lifetime"
+                  isFree={true}
+                />
+              )}
+
+              {(book.file?.asset?.url || book.preview?.asset?.url) && !hasAccess && !isAdmin && currentUser && !book.isPublic && (
                 <BookPurchaseButton
                   bookSlug={slug}
                   price={book.price}
@@ -295,6 +450,17 @@ export default async function BookPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Estadísticas (solo para admins) */}
+      {isAdmin && bookStats && bookRecord && (
+        <BookStats
+          bookId={bookRecord.id}
+          bookSanityId={book._id}
+          stats={bookStats}
+          sanityProjectId="oFrlvZc3p3"
+          sanityDataset="cyabp7izwldtnjp6bjo9haiw"
+        />
+      )}
 
       {/* Guías (solo para profesores) */}
       {(isTeacher || guides.length > 0) && (

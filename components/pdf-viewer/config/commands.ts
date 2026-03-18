@@ -677,6 +677,28 @@ export const commands: Record<string, Command<State>> = {
     },
   },
 
+  'annotation:toggle-visibility': {
+    id: 'annotation:toggle-visibility',
+    labelKey: 'annotation.toggleVisibility',
+    categories: ['annotation'],
+    action: () => {
+      // Toggle visibility using CSS class
+      const annotationLayers = document.querySelectorAll('[data-annotation-layer]');
+      annotationLayers.forEach((layer) => {
+        const element = layer as HTMLElement;
+        const isHidden = element.style.display === 'none';
+        element.style.display = isHidden ? '' : 'none';
+      });
+    },
+    active: () => {
+      const annotationLayers = document.querySelectorAll('[data-annotation-layer]');
+      if (annotationLayers.length === 0) return true;
+      const firstLayer = annotationLayers[0] as HTMLElement;
+      // Activo cuando las anotaciones están visibles
+      return !firstLayer.style.display || firstLayer.style.display !== 'none';
+    },
+  },
+
   'mode:redact': {
     id: 'mode:redact',
     labelKey: 'mode.redact',

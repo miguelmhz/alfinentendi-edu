@@ -181,11 +181,12 @@ export const AnnotationPropertiesSidebar = ({
         );
       } else if (activeTool && tool) {
         // Actualizar defaults de la herramienta activa
-        const currentDefaults = tool.defaults || {};
-        const newDefaults = { ...currentDefaults, ...patch };
-        // Note: setToolDefaults might not be available in all versions
-        // The tool defaults are typically set during tool creation
-        console.log('Tool defaults update:', activeTool, newDefaults);
+        // Mutamos directamente el objeto defaults para que los cambios se apliquen
+        if (!tool.defaults) {
+          tool.defaults = {};
+        }
+        Object.assign(tool.defaults, patch);
+        console.log('Tool defaults updated:', activeTool, tool.defaults);
       }
     },
     [annotation, editing, selected, activeTool, tool]

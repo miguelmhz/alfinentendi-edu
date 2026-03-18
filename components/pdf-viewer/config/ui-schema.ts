@@ -194,6 +194,13 @@ export const viewerUISchema: UISchema = {
           ],
         },
 
+        // ───────── Toggle Anotaciones ─────────
+        {
+          type: 'custom',
+          id: 'toggle-annotations-button',
+          componentId: 'annotation-toggle-button',
+        },
+
         // ───────── Spacer: Flexible space ─────────
         {
           type: 'spacer',

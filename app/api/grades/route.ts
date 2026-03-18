@@ -17,18 +17,20 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId");
 
-    if (!schoolId) {
+    const user = await prisma.user.findUnique({
+      where: { email: authUser.email! },
+      select: { roles: true, schoolId: true },
+    });
+
+    // Si no es admin y no proporciona schoolId, error
+    if (!user?.roles.includes("ADMIN") && !schoolId) {
       return NextResponse.json(
         { error: "schoolId es requerido" },
         { status: 400 }
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: authUser.email! },
-      select: { roles: true, schoolId: true },
-    });
-
+    // Si no es admin y el schoolId no coincide con su escuela, error
     if (!user?.roles.includes("ADMIN") && user?.schoolId !== schoolId) {
       return NextResponse.json(
         { error: "No tienes permisos para acceder a este recurso" },
@@ -36,8 +38,10 @@ export async function GET(request: Request) {
       );
     }
 
+    // Si es admin y no proporciona schoolId, devolver todos los grados
+    // Si proporciona schoolId, filtrar por esa escuela
     const grades = await prisma.grade.findMany({
-      where: { schoolId },
+      where: schoolId ? { schoolId } : {},
       include: {
         groups: {
           include: {
