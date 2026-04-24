@@ -29,6 +29,21 @@ export async function GET(request: Request) {
         });
 
         if (!user) {
+          const provider = authUser.app_metadata?.provider;
+
+          if (provider === "google") {
+            await prisma.user.create({
+              data: {
+                email: authUser.email!,
+                name: authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null,
+                roles: ["PUBLIC"],
+                status: "ACTIVE",
+                lastLogin: new Date(),
+              },
+            });
+            return NextResponse.redirect(`${origin}/`);
+          }
+
           // Si el usuario no existe en Prisma, cerrar sesión y redirigir
           await supabase.auth.signOut();
           return NextResponse.redirect(`${origin}/auth/login?error=user_not_found`);
@@ -58,6 +73,11 @@ export async function GET(request: Request) {
           where: { id: user.id },
           data: { lastLogin: new Date() },
         });
+
+        // Google OAuth es para acceso individual — siempre redirigir a /
+        if (authUser.app_metadata?.provider === "google") {
+          return NextResponse.redirect(`${origin}/`);
+        }
 
         // Redirigir según el rol principal
         // Nota: Como roles es un array, tomamos el primer rol o el más específico
