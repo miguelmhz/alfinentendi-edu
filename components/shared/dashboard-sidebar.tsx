@@ -27,6 +27,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
 } from "@/components/ui/sidebar/sidebar"
 import { NavMain } from "../ui/sidebar/nav-main"
 import { NavProjects } from "../ui/sidebar/nav-projects"
@@ -145,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar
-      collapsible="offcanvas"
+      collapsible="icon"
       variant="sidebar"
       className="top-[95px]"
       style={{
@@ -159,6 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <NavMain items={navigation} />
       </SidebarContent>
+      <SidebarRail />
     </Sidebar>
   )
 }

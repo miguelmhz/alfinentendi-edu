@@ -44,11 +44,12 @@ export function NavMain({
 
           if (!hasSubItems) {
             return (
-              <SidebarMenuItem 
-                key={item.title} 
+              <SidebarMenuItem
+                key={item.title}
                 className={cn(
-                  "px-6 py-3 border rounded-3xl transition-colors",
-                  isItemActive && "border-primary bg-primary/5"
+                  "px-6 py-3 border rounded-3xl transition-all",
+                  isItemActive && "border-primary bg-primary/5",
+                  "group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:rounded-md"
                 )}
               >
                 <SidebarMenuButton tooltip={item.title} asChild isActive={isItemActive}>
@@ -66,7 +67,7 @@ export function NavMain({
               key={item.title}
               asChild
               defaultOpen={shouldBeOpen}
-              className="group/collapsible px-6 py-3 border rounded-3xl"
+              className="group/collapsible px-6 py-3 border rounded-3xl transition-all group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0 group-data-[collapsible=icon]:border-transparent group-data-[collapsible=icon]:rounded-md"
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>

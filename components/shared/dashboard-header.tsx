@@ -2,7 +2,7 @@ import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
 import { EnvVarWarning } from "../env-var-warning";
 import Image from "next/image";
-import Logo from "@/assets/imgs/logo-nobg.webp";
+import Logo from "@/assets/imgs/afe.webp";
 import Notifications from "../ui/header/notifications";
 import Help from "../ui/header/Help";
 import SecctionIndicator from "../ui/header/SecctionIndicator";
@@ -16,7 +16,7 @@ export const DashboardHeader = () => {
     <header className="w-full h-[95px] flex flex-col lg:flex-row justify-center border-b border-b-foreground/10 py-4 px-7 sticky top-0 z-50 bg-background group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       {/*Control de sidebar y logo*/}
       <div className="flex justify-between lg:justify-start gap-6 lg:w-[calc(331px+28px)] items-center">
-        <SidebarTrigger/>
+        <SidebarTrigger />
         <Link href={"/"}>
           <Image src={Logo} alt="Logo" width={130} height={62} />
         </Link>

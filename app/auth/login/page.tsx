@@ -12,7 +12,7 @@ import {
 import Image from "next/image";
 import individualImg from "@/assets/imgs/individual.webp";
 import escuelaImg from "@/assets/imgs/escuela.webp";
-import logo from "@/assets/imgs/logo-nobg.webp";
+import logo from "@/assets/imgs/afe.webp";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import Beneficios from "@/components/auth/beneficios";

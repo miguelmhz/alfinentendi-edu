@@ -3,7 +3,7 @@
 import { UpdatePasswordForm } from "@/components/update-password-form";
 import Image from "next/image";
 import individualImg from "@/assets/imgs/individual.webp";
-import logo from "@/assets/imgs/logo-nobg.webp";
+import logo from "@/assets/imgs/afe.webp";
 
 export default function Page() {
   return (
